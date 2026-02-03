@@ -1,7 +1,7 @@
 use crate::models::request::{
     AccessionPagination, AccessionPaginationWithPrivate, AuthorizeRequest, CreateAccessionRequest,
     CreateAccessionRequestRaw, CreateSubjectRequest, DeleteSubjectRequest, LoginRequest,
-    SubjectPagination, UpdateAccessionRequest,
+    SubjectPagination, UpdateAccessionRequest, UpdateSubjectRequest,
 };
 use crate::models::response::{
     CreateApiKeyResponse, GetOneAccessionResponse, ListAccessionsResponse, ListSubjectsArResponse,
@@ -45,7 +45,8 @@ impl Modify for SecurityAddon {
         crate::routes::auth::create_api_key,
         crate::routes::subjects::create_subject,
         crate::routes::subjects::list_subjects,
-        crate::routes::subjects::delete_subject
+        crate::routes::subjects::delete_subject,
+        crate::routes::subjects::update_subject
     ),
     components(
         schemas(
@@ -60,6 +61,7 @@ impl Modify for SecurityAddon {
             AuthorizeRequest,
             CreateApiKeyResponse,
             CreateSubjectRequest,
+            UpdateSubjectRequest,
             DeleteSubjectRequest,
             SubjectPagination,
             SubjectResponse,
