@@ -280,8 +280,10 @@ impl AccessionsService {
                                     Ok(id) => {
                                         info!("Crawl result written to db successfully");
                                         if payload.send_email_notification {
-                                            let email_subject =
-                                                format!("Your URL {} has been archived!", payload.url);
+                                            let email_subject = format!(
+                                                "Your URL {} has been archived!",
+                                                payload.url
+                                            );
                                             let email_body = format!(
                                                 "We have archived your <a href='https://sudandigitalarchive.com/archive/{}?isPrivate={}&lang={}'>url</a>.",
                                                 id, payload.is_private, payload.metadata_language

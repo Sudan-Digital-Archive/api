@@ -4,7 +4,7 @@
 //! that are used to categorize archival records in both Arabic and English.
 
 use crate::models::common::MetadataLanguage;
-use crate::models::request::CreateSubjectRequest;
+use crate::models::request::{CreateSubjectRequest, UpdateSubjectRequest};
 use crate::models::response::{ListSubjectsArResponse, ListSubjectsEnResponse};
 use crate::repos::subjects_repo::SubjectsRepo;
 use axum::response::{IntoResponse, Response};
@@ -139,6 +139,42 @@ impl SubjectsService {
         self.subjects_repo
             .verify_subjects_exist(metadata_subjects, metadata_language)
             .await
+    }
+
+    /// Updates a metadata subject by its ID.
+    ///
+    /// # Arguments
+    /// * `subject_id` - The ID of the subject to update.
+    /// * `payload` - The update request containing new subject text and language
+    ///
+    /// # Returns
+    /// Returns the updated subject or an error response.
+    pub async fn update_one(self, subject_id: i32, payload: UpdateSubjectRequest) -> Response {
+        info!(
+            "Updating {} subject with id {} to new text: {}...",
+            payload.lang, subject_id, payload.metadata_subject
+        );
+        let update_result = self.subjects_repo.update_one(subject_id, payload).await;
+        match update_result {
+            Err(err) => {
+                if err
+                    .to_string()
+                    .contains("duplicate key value violates unique constraint")
+                {
+                    warn!(%err,
+                        "Can't update subject since new text already exists");
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        "Subject with this text already exists".to_string(),
+                    )
+                        .into_response();
+                }
+                error!(%err, "Error occurred updating subject");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
+            }
+            Ok(Some(updated_subject)) => (StatusCode::OK, Json(updated_subject)).into_response(),
+            Ok(None) => (StatusCode::NOT_FOUND, "Subject not found").into_response(),
+        }
     }
 
     /// Deletes a metadata subject by its ID.

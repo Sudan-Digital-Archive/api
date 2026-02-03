@@ -4,7 +4,7 @@
 //! that can be used to categorize archived content in both Arabic and English.
 
 use crate::models::common::MetadataLanguage;
-use crate::models::request::CreateSubjectRequest;
+use crate::models::request::{CreateSubjectRequest, UpdateSubjectRequest};
 use crate::models::response::SubjectResponse;
 use ::entity::dublin_metadata_subject_ar::ActiveModel as DublinMetadataSubjectArActiveModel;
 use ::entity::dublin_metadata_subject_ar::Entity as DublinMetadataSubjectAr;
@@ -17,7 +17,8 @@ use entity::{dublin_metadata_subject_ar, dublin_metadata_subject_en};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{ExprTrait, Func};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait,
+    ActiveModelTrait, ActiveValue, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel,
+    PaginatorTrait,
 };
 use sea_orm::{ColumnTrait, QueryFilter};
 
@@ -78,6 +79,17 @@ pub trait SubjectsRepo: Send + Sync {
         subject_ids: Vec<i32>,
         metadata_language: MetadataLanguage,
     ) -> Result<bool, DbErr>;
+
+    /// Updates a subject term by its ID.
+    ///
+    /// # Arguments
+    /// * `subject_id` - The ID of the subject to update.
+    /// * `update_subject_request` - The update request containing new subject text and language
+    async fn update_one(
+        &self,
+        subject_id: i32,
+        update_subject_request: UpdateSubjectRequest,
+    ) -> Result<Option<SubjectResponse>, DbErr>;
 
     /// Deletes a subject term by its ID.
     ///
@@ -188,6 +200,50 @@ impl SubjectsRepo for DBSubjectsRepo {
             }
         };
         Ok(flag)
+    }
+
+    async fn update_one(
+        &self,
+        subject_id: i32,
+        update_subject_request: UpdateSubjectRequest,
+    ) -> Result<Option<SubjectResponse>, DbErr> {
+        let result = match update_subject_request.lang {
+            MetadataLanguage::English => {
+                let subject = DublinMetadataSubjectEn::find_by_id(subject_id)
+                    .one(&self.db_session)
+                    .await?;
+                if let Some(existing_subject) = subject {
+                    let mut active_subject = existing_subject.into_active_model();
+                    active_subject.subject =
+                        ActiveValue::Set(update_subject_request.metadata_subject);
+                    let updated_subject = active_subject.update(&self.db_session).await?;
+                    Some(SubjectResponse {
+                        id: updated_subject.id,
+                        subject: updated_subject.subject,
+                    })
+                } else {
+                    None
+                }
+            }
+            MetadataLanguage::Arabic => {
+                let subject = DublinMetadataSubjectAr::find_by_id(subject_id)
+                    .one(&self.db_session)
+                    .await?;
+                if let Some(existing_subject) = subject {
+                    let mut active_subject = existing_subject.into_active_model();
+                    active_subject.subject =
+                        ActiveValue::Set(update_subject_request.metadata_subject);
+                    let updated_subject = active_subject.update(&self.db_session).await?;
+                    Some(SubjectResponse {
+                        id: updated_subject.id,
+                        subject: updated_subject.subject,
+                    })
+                } else {
+                    None
+                }
+            }
+        };
+        Ok(result)
     }
 
     async fn delete_one(

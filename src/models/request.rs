@@ -210,6 +210,14 @@ pub struct UpdateAccessionRequest {
     pub is_private: bool,
 }
 
+/// Request for updating a subject category.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateSubjectRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub metadata_subject: String,
+    pub lang: MetadataLanguage,
+}
+
 /// Request for deleting a subject category.
 #[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
 pub struct DeleteSubjectRequest {
