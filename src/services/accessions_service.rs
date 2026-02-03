@@ -261,6 +261,7 @@ impl AccessionsService {
                                     is_private: payload.is_private,
                                     metadata_format: DublinMetadataFormat::Wacz,
                                     s3_filename: Some(unique_filename.clone()),
+                                    send_email_notification: payload.send_email_notification,
                                 };
                                 let write_result = self
                                     .accessions_repo
@@ -278,22 +279,31 @@ impl AccessionsService {
                                     }
                                     Ok(id) => {
                                         info!("Crawl result written to db successfully");
-                                        let email_subject =
-                                            format!("Your URL {} has been archived!", payload.url);
-                                        let email_body = format!(
-                                            "We have archived your <a href='https://sudandigitalarchive.com/archive/{}?isPrivate={}&lang={}'>url</a>.",
-                                            id, payload.is_private, payload.metadata_language
-                                        );
-                                        let email_result = self
-                                            .emails_repo
-                                            .send_email(user_email, email_subject, email_body)
-                                            .await;
-                                        info!(
-                                            "Email sent to user with id {id} for url {}",
-                                            payload.url
-                                        );
-                                        if let Err(err) = email_result {
-                                            error!(%err, "Error occurred sending email to user");
+                                        if payload.send_email_notification {
+                                            let email_subject = format!(
+                                                "Your URL {} has been archived!",
+                                                payload.url
+                                            );
+                                            let email_body = format!(
+                                                "We have archived your <a href='https://sudandigitalarchive.com/archive/{}?isPrivate={}&lang={}'>url</a>.",
+                                                id, payload.is_private, payload.metadata_language
+                                            );
+                                            let email_result = self
+                                                .emails_repo
+                                                .send_email(user_email, email_subject, email_body)
+                                                .await;
+                                            info!(
+                                                "Email sent to user with id {id} for url {}",
+                                                payload.url
+                                            );
+                                            if let Err(err) = email_result {
+                                                error!(%err, "Error occurred sending email to user");
+                                            }
+                                        } else {
+                                            info!(
+                                                "Email notification skipped for user with id {id} for url {} (send_email_notification=false)",
+                                                payload.url
+                                            );
                                         }
                                     }
                                 }

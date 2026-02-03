@@ -138,6 +138,18 @@ impl SubjectsRepo for InMemorySubjectsRepo {
         Ok(mock_paginated_subjects_en())
     }
 
+    /// Returns an updated subject response for testing.
+    async fn update_one(
+        &self,
+        _subject_id: i32,
+        _update_subject_request: crate::models::request::UpdateSubjectRequest,
+    ) -> Result<Option<crate::models::response::SubjectResponse>, DbErr> {
+        Ok(Some(crate::models::response::SubjectResponse {
+            id: 1,
+            subject: "updated subject".to_string(),
+        }))
+    }
+
     /// Always returns true for subject verification in tests.
     async fn verify_subjects_exist(
         &self,

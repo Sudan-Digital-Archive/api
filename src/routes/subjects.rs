@@ -6,15 +6,17 @@
 //! It uses in-memory repositories for testing to avoid I/O operations.
 
 use crate::app_factory::AppState;
-use crate::auth::validate_at_least_contributor;
+use crate::auth::{validate_at_least_contributor, validate_at_least_researcher};
 use crate::models::auth::AuthenticatedUser;
-use crate::models::request::{CreateSubjectRequest, DeleteSubjectRequest, SubjectPagination};
+use crate::models::request::{
+    CreateSubjectRequest, DeleteSubjectRequest, SubjectPagination, UpdateSubjectRequest,
+};
 use crate::models::response::{ListSubjectsArResponse, ListSubjectsEnResponse, SubjectResponse};
 use ::entity::sea_orm_active_enums::Role;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use validator::Validate;
 
@@ -25,7 +27,8 @@ pub fn get_subjects_routes() -> Router<AppState> {
         Router::new()
             .route("/", get(list_subjects))
             .route("/", post(create_subject))
-            .route("/{subject_id}", delete(delete_subject)),
+            .route("/{subject_id}", delete(delete_subject))
+            .route("/{subject_id}", put(update_subject)),
     )
 }
 
@@ -119,6 +122,37 @@ async fn delete_subject(
     }
     state.subjects_service.delete_one(id, payload.lang).await
 }
+
+#[utoipa::path(
+    put,
+    path = "/api/v1/metadata-subjects/{subject_id}",
+    tag = "Subjects",
+    request_body = UpdateSubjectRequest,
+    responses(
+        (status = 200, description = "OK", body = SubjectResponse),
+        (status = 400, description = "Bad request"),
+        (status = 403, description = "Forbidden"),
+        (status = 404, description = "Not found")
+    ),
+    security(
+        ("jwt_cookie_auth" = []),
+        ("api_key_auth" = [])
+    )
+)]
+async fn update_subject(
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+    authenticated_user: AuthenticatedUser,
+    Json(payload): Json<UpdateSubjectRequest>,
+) -> Response {
+    if !validate_at_least_researcher(&authenticated_user.role) {
+        return (StatusCode::FORBIDDEN, "Must have at least researcher role").into_response();
+    }
+    if let Err(err) = payload.validate() {
+        return (StatusCode::BAD_REQUEST, err.to_string()).into_response();
+    }
+    state.subjects_service.update_one(id, payload).await
+}
 #[cfg(test)]
 mod tests {
 
@@ -158,7 +192,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
     #[tokio::test]
     async fn create_one_subject_en() {
@@ -300,7 +334,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
     #[tokio::test]
     async fn delete_one_subject_with_auth() {
@@ -324,5 +358,58 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn update_one_subject_no_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/api/v1/metadata-subjects/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "metadata_subject": "updated subject"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn update_one_subject_with_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/api/v1/metadata-subjects/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "metadata_subject": "updated subject"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: SubjectResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.subject, "updated subject".to_string());
+        assert_eq!(actual.id, 1);
     }
 }

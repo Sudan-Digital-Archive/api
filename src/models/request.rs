@@ -29,10 +29,12 @@ pub struct CreateAccessionRequest {
     pub is_private: bool,
     pub metadata_format: DublinMetadataFormat,
     pub s3_filename: Option<String>,
+    #[serde(default = "bool::default")]
+    pub send_email_notification: bool,
 }
 
 /// Request for creating a new accession from raw file + metadata.
-#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+#[derive(Validate, Deserialize, ToSchema)]
 pub struct CreateAccessionRequestRaw {
     pub metadata_language: MetadataLanguage,
     #[validate(length(min = 1, max = 200))]
@@ -206,6 +208,14 @@ pub struct UpdateAccessionRequest {
     #[schema(example = json!([1, 2, 3]))]
     pub metadata_subjects: Vec<i32>,
     pub is_private: bool,
+}
+
+/// Request for updating a subject category.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateSubjectRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub metadata_subject: String,
+    pub lang: MetadataLanguage,
 }
 
 /// Request for deleting a subject category.
