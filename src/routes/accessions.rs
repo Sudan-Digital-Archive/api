@@ -402,6 +402,7 @@ mod tests {
                     is_private: false,
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file.wacz".to_string()),
+                    send_email_notification: true,
                 },
                 "archiver@gmail.com".to_string(),
             )
@@ -424,6 +425,7 @@ mod tests {
                     is_private: true,
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file-2.wacz".to_string()),
+                    send_email_notification: true,
                 },
                 "emailsare4eva@aol.com".to_string(),
             )
@@ -451,7 +453,8 @@ mod tests {
     "metadata_subjects": [1],
     "is_private": false,
     "metadata_format": "wacz",
-    "s3_filename": "guardian-article.wacz"
+    "s3_filename": "guardian-article.wacz",
+    "send_email_notification": true
 })).unwrap(),
                     ))
                     .unwrap(),
@@ -488,7 +491,8 @@ mod tests {
                             "metadata_subjects": [1],
                             "is_private": true,
                             "metadata_format": "wacz",
-                            "s3_filename": "facebook-story.wacz"
+                            "s3_filename": "facebook-story.wacz",
+                            "send_email_notification": false
                         }))
                         .unwrap(),
                     ))
@@ -654,7 +658,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -717,7 +721,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -768,7 +772,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -848,7 +852,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -1034,5 +1038,258 @@ mod tests {
         let actual = String::from_utf8((&body).to_vec()).unwrap();
         assert!(actual
             .contains("Failed to parse metadata JSON: Error(\"missing field `metadata_title`\""));
+    }
+
+    #[tokio::test]
+    async fn create_accession_crawl_with_email_notification_true() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/accessions/crawl")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "url": "https://example.com/test-email-true",
+                            "metadata_language": "english",
+                            "metadata_title": "Test with email notification",
+                            "metadata_description": "Test case for email notification true",
+                            "metadata_time": "2024-11-01T23:32:00",
+                            "browser_profile": null,
+                            "metadata_subjects": [1],
+                            "is_private": false,
+                            "metadata_format": "wacz",
+                            "s3_filename": "test-email-true.wacz",
+                            "send_email_notification": true
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual = String::from_utf8((&body).to_vec()).unwrap();
+        let expected = "Started browsertrix crawl task!".to_string();
+        assert_eq!(actual, expected)
+    }
+
+    #[tokio::test]
+    async fn create_accession_crawl_with_email_notification_false() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/accessions/crawl")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "url": "https://example.com/test-email-false",
+                            "metadata_language": "english",
+                            "metadata_title": "Test with email notification disabled",
+                            "metadata_description": "Test case for email notification false",
+                            "metadata_time": "2024-11-01T23:32:00",
+                            "browser_profile": null,
+                            "metadata_subjects": [1],
+                            "is_private": false,
+                            "metadata_format": "wacz",
+                            "s3_filename": "test-email-false.wacz",
+                            "send_email_notification": false
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual = String::from_utf8((&body).to_vec()).unwrap();
+        let expected = "Started browsertrix crawl task!".to_string();
+        assert_eq!(actual, expected)
+    }
+
+    #[tokio::test]
+    async fn create_accession_crawl_without_email_notification_field() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/accessions/crawl")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "url": "https://example.com/test-no-field",
+                            "metadata_language": "english",
+                            "metadata_title": "Test without email notification field",
+                            "metadata_description": "Test case for missing email notification field",
+                            "metadata_time": "2024-11-01T23:32:00",
+                            "browser_profile": null,
+                            "metadata_subjects": [1],
+                            "is_private": false,
+                            "metadata_format": "wacz",
+                            "s3_filename": "test-no-field.wacz"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual = String::from_utf8((&body).to_vec()).unwrap();
+        let expected = "Started browsertrix crawl task!".to_string();
+        assert_eq!(actual, expected)
+    }
+
+    #[tokio::test]
+    async fn run_one_crawl_service_test_with_email_true() {
+        let accessions_service = build_test_accessions_service();
+        accessions_service
+            .create_one(
+                CreateAccessionRequest {
+                    url: "https://example.com/service-test-true".to_string(),
+                    metadata_language: MetadataLanguage::English,
+                    metadata_title: "Service test with email".to_string(),
+                    metadata_description: Some("Service test email notification true".to_string()),
+                    metadata_time: Default::default(),
+                    browser_profile: None,
+                    metadata_subjects: vec![1, 2, 3],
+                    is_private: false,
+                    metadata_format: DublinMetadataFormat::Wacz,
+                    s3_filename: Some("service-test-true.wacz".to_string()),
+                    send_email_notification: true,
+                },
+                "test@example.com".to_string(),
+            )
+            .await;
+    }
+
+    #[tokio::test]
+    async fn run_one_crawl_service_test_with_email_false() {
+        let accessions_service = build_test_accessions_service();
+        accessions_service
+            .create_one(
+                CreateAccessionRequest {
+                    url: "https://example.com/service-test-false".to_string(),
+                    metadata_language: MetadataLanguage::English,
+                    metadata_title: "Service test without email".to_string(),
+                    metadata_description: Some("Service test email notification false".to_string()),
+                    metadata_time: Default::default(),
+                    browser_profile: None,
+                    metadata_subjects: vec![1, 2, 3],
+                    is_private: false,
+                    metadata_format: DublinMetadataFormat::Wacz,
+                    s3_filename: Some("service-test-false.wacz".to_string()),
+                    send_email_notification: false,
+                },
+                "test@example.com".to_string(),
+            )
+            .await;
+    }
+
+    #[tokio::test]
+    async fn create_accession_raw_with_email_notification_true() {
+        let app = build_test_app();
+        let metadata = json!({
+            "metadata_language": "english",
+            "metadata_title": "Raw Test With Email",
+            "metadata_description": "Raw file test with email notification true",
+            "metadata_time": "2024-01-01T00:00:00",
+            "metadata_subjects": [1],
+            "is_private": false,
+            "metadata_format": "wacz",
+            "original_url": "https://coolurl.com/raw-email-true",
+            "s3_filename": "raw-email-true.wacz",
+            "send_email_notification": true
+        });
+        let file_bytes = vec![0; 1024]; // 1KB file
+        let body = build_multipart_form_data(
+            metadata,
+            file_bytes,
+            "raw-email-true.wacz",
+            "application/wacz",
+            true,
+        )
+        .await;
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/accessions/raw")
+                    .header(
+                        http::header::CONTENT_TYPE,
+                        "multipart/form-data; boundary=------------------------abcdef1234567890",
+                    )
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(body)
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual = String::from_utf8((&body).to_vec()).unwrap();
+        assert_eq!(actual, "Accession created with id: 10");
+    }
+
+    #[tokio::test]
+    async fn create_accession_raw_with_email_notification_false() {
+        let app = build_test_app();
+        let metadata = json!({
+            "metadata_language": "english",
+            "metadata_title": "Raw Test Without Email",
+            "metadata_description": "Raw file test with email notification false",
+            "metadata_time": "2024-01-01T00:00:00",
+            "metadata_subjects": [1],
+            "is_private": false,
+            "metadata_format": "wacz",
+            "original_url": "https://coolurl.com/raw-email-false",
+            "s3_filename": "raw-email-false.wacz",
+            "send_email_notification": false
+        });
+        let file_bytes = vec![0; 1024]; // 1KB file
+        let body = build_multipart_form_data(
+            metadata,
+            file_bytes,
+            "raw-email-false.wacz",
+            "application/wacz",
+            true,
+        )
+        .await;
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/accessions/raw")
+                    .header(
+                        http::header::CONTENT_TYPE,
+                        "multipart/form-data; boundary=------------------------abcdef1234567890",
+                    )
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(body)
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual = String::from_utf8((&body).to_vec()).unwrap();
+        assert_eq!(actual, "Accession created with id: 10");
     }
 }

@@ -29,6 +29,8 @@ pub struct CreateAccessionRequest {
     pub is_private: bool,
     pub metadata_format: DublinMetadataFormat,
     pub s3_filename: Option<String>,
+    #[serde(default)]
+    pub send_email_notification: bool,
 }
 
 /// Request for creating a new accession from raw file + metadata.
@@ -48,6 +50,8 @@ pub struct CreateAccessionRequestRaw {
     #[validate(url)]
     pub original_url: String,
     pub s3_filename: String,
+    #[serde(default)]
+    pub send_email_notification: bool,
 }
 
 /// Request for creating a new accession from raw file + metadata via multipart upload.
