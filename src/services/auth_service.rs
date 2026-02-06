@@ -1,6 +1,9 @@
 use crate::auth::JWT_KEYS;
 use crate::models::auth::JWTClaims;
-use crate::models::request::{AuthorizeRequest, LoginRequest};
+use crate::models::request::{
+    AuthorizeRequest, CreateUserRequest, LoginRequest, UpdateUserRequest, UserPagination,
+};
+use crate::models::response::{ListUsersResponse, UserResponse};
 use crate::repos::{
     auth_repo::{ApiKeyUserInfo, AuthRepo},
     emails_repo::EmailsRepo,
@@ -12,10 +15,12 @@ use axum::http::{
     StatusCode,
 };
 use axum::response::{IntoResponse, Response};
+use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 use chrono::{NaiveDateTime, Utc};
 use jsonwebtoken::errors::Error;
 use jsonwebtoken::{encode, Header};
 use sea_orm::DbErr;
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -205,6 +210,102 @@ impl AuthService {
 
     pub async fn delete_expired_api_keys(self) {
         self.auth_repo.delete_expired_api_keys().await
+    }
+
+    pub async fn create_user(&self, request: CreateUserRequest) -> Result<UserResponse, DbErr> {
+        let user = self
+            .auth_repo
+            .create_user(request.email, request.role, request.is_active)
+            .await?;
+        Ok(UserResponse::from(user))
+    }
+
+    pub async fn update_user(
+        &self,
+        user_id: Uuid,
+        request: UpdateUserRequest,
+    ) -> Result<Option<UserResponse>, DbErr> {
+        let user = self
+            .auth_repo
+            .update_user(user_id, request.role, request.is_active)
+            .await?;
+        Ok(user.map(UserResponse::from))
+    }
+
+    pub async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<UserResponse>, DbErr> {
+        let user = self.auth_repo.get_user_by_id(user_id).await?;
+        Ok(user.map(UserResponse::from))
+    }
+
+    pub async fn list_users(&self, pagination: UserPagination) -> Result<ListUsersResponse, DbErr> {
+        let (users, num_pages) = self
+            .auth_repo
+            .list_users(
+                pagination.page,
+                pagination.per_page,
+                pagination.email_filter,
+            )
+            .await?;
+
+        let user_responses: Vec<UserResponse> = users.into_iter().map(UserResponse::from).collect();
+
+        Ok(ListUsersResponse {
+            items: user_responses,
+            num_pages,
+            page: pagination.page,
+            per_page: pagination.per_page,
+        })
+    }
+
+    /// Deletes a user after verifying they are not an admin.
+    /// Returns Ok(Ok(Some(()))) if deleted successfully,
+    /// Ok(Ok(None)) if user not found,
+    /// Ok(Err(message)) if user is an admin (cannot delete admins),
+    /// Err(DbErr) on database error.
+    pub async fn delete_user_with_admin_check(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Result<Option<()>, String>, DbErr> {
+        // First get the user to check if they're an admin
+        let user = self.auth_repo.get_user_by_id(user_id).await?;
+
+        match user {
+            Some(user) => {
+                // Cannot delete admin users
+                if user.role == Role::Admin {
+                    return Ok(Err("Cannot delete admin users".to_string()));
+                }
+
+                // Delete the user
+                let result = self.auth_repo.delete_user(user_id).await?;
+                Ok(Ok(result))
+            }
+            None => Ok(Ok(None)),
+        }
+    }
+
+    /// Revokes an API key by decoding it, hashing it, and marking it as revoked.
+    /// Only revokes if the API key belongs to the specified user.
+    /// Returns None if the API key doesn't exist or doesn't belong to the user.
+    pub async fn revoke_api_key(
+        &self,
+        api_key: String,
+        user_id: Uuid,
+    ) -> Result<Option<()>, DbErr> {
+        // Decode the API key from base64
+        let secret_bytes = match URL_SAFE.decode(&api_key) {
+            Ok(bytes) => bytes,
+            Err(_) => return Ok(None),
+        };
+
+        // Hash the API key
+        let mut hasher = Sha256::new();
+        hasher.update(secret_bytes);
+        let key_hash = hasher.finalize();
+        let key_hash_hex = format!("{key_hash:x}");
+
+        // Call repo to revoke - ownership check happens in repo
+        self.auth_repo.revoke_api_key(key_hash_hex, user_id).await
     }
 }
 

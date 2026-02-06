@@ -5,7 +5,7 @@
 
 use crate::models::common::{BrowserProfile, MetadataLanguage};
 use chrono::NaiveDateTime;
-use entity::sea_orm_active_enums::DublinMetadataFormat;
+use entity::sea_orm_active_enums::{DublinMetadataFormat, Role};
 use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -222,4 +222,52 @@ pub struct UpdateSubjectRequest {
 #[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
 pub struct DeleteSubjectRequest {
     pub lang: MetadataLanguage,
+}
+
+/// Request for creating a new user (admin only).
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct CreateUserRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub email: String,
+    pub role: Role,
+    pub is_active: bool,
+}
+
+/// Request for updating a user (admin only, strict PUT semantics).
+/// Email cannot be changed.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateUserRequest {
+    pub role: Role,
+    pub is_active: bool,
+}
+
+/// Pagination and filtering parameters for listing users.
+#[derive(Debug, Clone, Validate, Deserialize, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct UserPagination {
+    #[schema(default = 0)]
+    pub page: u64,
+    #[validate(range(min = 1, max = 200))]
+    #[schema(default = 20, minimum = 1, maximum = 200)]
+    pub per_page: u64,
+    #[validate(length(min = 1, max = 500))]
+    pub email_filter: Option<String>,
+}
+
+impl Default for UserPagination {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            per_page: 20,
+            email_filter: None,
+        }
+    }
+}
+
+/// Request for revoking an API key (admin only).
+/// The API key should be provided as received from the user.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct RevokeApiKeyRequest {
+    #[validate(length(min = 1))]
+    pub api_key: String,
 }

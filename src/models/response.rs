@@ -3,12 +3,13 @@
 //! This module contains all the response structures used by the API endpoints,
 //! including authentication, crawl operations, and accession management.
 
-use ::entity::sea_orm_active_enums::CrawlStatus;
 use chrono::NaiveDateTime;
 use entity::accessions_with_metadata::Model as AccessionsWithMetadataModel;
+use entity::archive_user::Model as ArchiveUserModel;
 use entity::dublin_metadata_subject_ar::Model as DublinMetadataSubjectArModel;
 use entity::dublin_metadata_subject_en::Model as DublinMetadataSubjectEnModel;
 use entity::sea_orm_active_enums::DublinMetadataFormat;
+use entity::sea_orm_active_enums::{CrawlStatus, Role};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -173,4 +174,33 @@ pub struct ListSubjectsEnResponse {
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct CreateApiKeyResponse {
     pub api_key_secret: String,
+}
+
+/// Response containing user information.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct UserResponse {
+    pub id: Uuid,
+    pub email: String,
+    pub role: Role,
+    pub is_active: bool,
+}
+
+impl From<ArchiveUserModel> for UserResponse {
+    fn from(model: ArchiveUserModel) -> Self {
+        Self {
+            id: model.id,
+            email: model.email,
+            role: model.role,
+            is_active: model.is_active,
+        }
+    }
+}
+
+/// Response for listing users with pagination.
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct ListUsersResponse {
+    pub items: Vec<UserResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
 }
