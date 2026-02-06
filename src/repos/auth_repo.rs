@@ -12,7 +12,10 @@ use chrono::{Duration, NaiveDateTime, Utc};
 use entity::{api_key, archive_user, session};
 use rand::Rng;
 use sea_orm::{ActiveModelTrait, ActiveValue};
-use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter};
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::{error, info};
@@ -128,6 +131,91 @@ pub trait AuthRepo: Send + Sync {
     /// This function should be called periodically (e.g., via a background task) to clean up
     /// expired API key records. It logs success or errors but does not return a result.
     async fn delete_expired_api_keys(&self);
+
+    /// Creates a new user in the database.
+    ///
+    /// # Arguments
+    /// * `email` - The email address of the new user
+    /// * `role` - The role to assign to the user
+    /// * `is_active` - Whether the user account is active
+    ///
+    /// # Returns
+    /// Returns `Ok(user)` containing the newly created user, or `Err` if a database error occurs
+    /// (e.g., unique constraint violation on email).
+    async fn create_user(
+        &self,
+        email: String,
+        role: Role,
+        is_active: bool,
+    ) -> Result<ArchiveUserModel, DbErr>;
+
+    /// Updates an existing user's role and active status.
+    ///
+    /// # Arguments
+    /// * `user_id` - The ID of the user to update
+    /// * `role` - The new role to assign
+    /// * `is_active` - The new active status
+    ///
+    /// # Returns
+    /// Returns `Ok(Some(user))` containing the updated user if found,
+    /// `Ok(None)` if no user exists with the given ID, or `Err` on database failure.
+    async fn update_user(
+        &self,
+        user_id: Uuid,
+        role: Role,
+        is_active: bool,
+    ) -> Result<Option<ArchiveUserModel>, DbErr>;
+
+    /// Retrieves a user by their ID (including inactive users).
+    ///
+    /// # Arguments
+    /// * `user_id` - The ID of the user to retrieve
+    ///
+    /// # Returns
+    /// Returns `Ok(Some(user))` if a user with the given ID exists (regardless of active status),
+    /// `Ok(None)` if no user is found, or `Err` on database failure.
+    async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<ArchiveUserModel>, DbErr>;
+
+    /// Lists users with optional email filtering and pagination.
+    ///
+    /// # Arguments
+    /// * `page` - The page number (0-indexed)
+    /// * `per_page` - Number of items per page
+    /// * `email_filter` - Optional email substring to filter by
+    ///
+    /// # Returns
+    /// Returns `Ok((users, num_pages))` containing the list of users and total page count,
+    /// or `Err` on database failure.
+    async fn list_users(
+        &self,
+        page: u64,
+        per_page: u64,
+        email_filter: Option<String>,
+    ) -> Result<(Vec<ArchiveUserModel>, u64), DbErr>;
+
+    /// Deletes a user and all associated sessions and API keys.
+    ///
+    /// This is a hard delete that cascades to related entities.
+    ///
+    /// # Arguments
+    /// * `user_id` - The ID of the user to delete
+    ///
+    /// # Returns
+    /// Returns `Ok(Some(()))` if the user was found and deleted,
+    /// `Ok(None)` if no user exists with the given ID, or `Err` on database failure.
+    async fn delete_user(&self, user_id: Uuid) -> Result<Option<()>, DbErr>;
+
+    /// Revokes an API key by its hash, but only if it belongs to the specified user.
+    ///
+    /// # Arguments
+    /// * `key_hash` - The SHA256 hash of the API key to revoke
+    /// * `user_id` - The ID of the user the API key must belong to
+    ///
+    /// # Returns
+    /// Returns `Ok(Some(()))` if the API key was found and revoked,
+    /// `Ok(None)` if no API key exists with the given hash or it doesn't belong to the user,
+    /// or `Err` on database failure.
+    async fn revoke_api_key(&self, key_hash: String, user_id: Uuid) -> Result<Option<()>, DbErr>;
 }
 
 #[async_trait]
@@ -349,6 +437,130 @@ impl AuthRepo for DBAuthRepo {
             Err(err) => {
                 error!(%err, "Error deleting expired API keys");
             }
+        }
+    }
+
+    /// Creates a new user in the database.
+    async fn create_user(
+        &self,
+        email: String,
+        role: Role,
+        is_active: bool,
+    ) -> Result<ArchiveUserModel, DbErr> {
+        let user_id = Uuid::new_v4();
+        let user = archive_user::ActiveModel {
+            id: ActiveValue::Set(user_id),
+            email: ActiveValue::Set(email),
+            role: ActiveValue::Set(role),
+            is_active: ActiveValue::Set(is_active),
+        };
+        user.insert(&self.db_session).await
+    }
+
+    /// Updates an existing user's role and active status.
+    async fn update_user(
+        &self,
+        user_id: Uuid,
+        role: Role,
+        is_active: bool,
+    ) -> Result<Option<ArchiveUserModel>, DbErr> {
+        let user = ArchiveUser::find_by_id(user_id)
+            .one(&self.db_session)
+            .await?;
+
+        match user {
+            Some(existing_user) => {
+                let mut user_active_model: archive_user::ActiveModel = existing_user.into();
+                user_active_model.role = ActiveValue::Set(role);
+                user_active_model.is_active = ActiveValue::Set(is_active);
+                let updated_user = user_active_model.update(&self.db_session).await?;
+                Ok(Some(updated_user))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Retrieves a user by their ID (including inactive users).
+    async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<ArchiveUserModel>, DbErr> {
+        ArchiveUser::find_by_id(user_id).one(&self.db_session).await
+    }
+
+    /// Lists users with optional email filtering and pagination.
+    async fn list_users(
+        &self,
+        page: u64,
+        per_page: u64,
+        email_filter: Option<String>,
+    ) -> Result<(Vec<ArchiveUserModel>, u64), DbErr> {
+        let mut query = ArchiveUser::find();
+
+        // Apply email filter if provided
+        if let Some(filter) = email_filter {
+            query = query.filter(archive_user::Column::Email.contains(filter));
+        }
+
+        // Get total count for pagination
+        let total_count = query.clone().count(&self.db_session).await?;
+        let num_pages = (total_count + per_page - 1).div_ceil(per_page);
+        // Fetch the page
+        let users = query
+            .order_by_asc(archive_user::Column::Email)
+            .offset(page * per_page)
+            .limit(per_page)
+            .all(&self.db_session)
+            .await?;
+
+        Ok((users, num_pages))
+    }
+
+    /// Deletes a user and all associated sessions and API keys.
+    async fn delete_user(&self, user_id: Uuid) -> Result<Option<()>, DbErr> {
+        // Check if user exists first
+        let user = ArchiveUser::find_by_id(user_id)
+            .one(&self.db_session)
+            .await?;
+
+        if user.is_none() {
+            return Ok(None);
+        }
+
+        // Delete associated sessions first
+        Session::delete_many()
+            .filter(session::Column::UserId.eq(user_id))
+            .exec(&self.db_session)
+            .await?;
+
+        // Delete associated API keys
+        ApiKey::delete_many()
+            .filter(api_key::Column::UserId.eq(user_id))
+            .exec(&self.db_session)
+            .await?;
+
+        // Delete the user
+        ArchiveUser::delete_by_id(user_id)
+            .exec(&self.db_session)
+            .await?;
+
+        Ok(Some(()))
+    }
+
+    /// Revokes an API key by its hash, but only if it belongs to the specified user.
+    async fn revoke_api_key(&self, key_hash: String, user_id: Uuid) -> Result<Option<()>, DbErr> {
+        // Find the API key by hash and verify it belongs to the user
+        let api_key = ApiKey::find()
+            .filter(api_key::Column::KeyHash.eq(key_hash))
+            .filter(api_key::Column::UserId.eq(user_id))
+            .one(&self.db_session)
+            .await?;
+
+        match api_key {
+            Some(key) => {
+                let mut active_key: api_key::ActiveModel = key.into();
+                active_key.is_revoked = ActiveValue::Set(true);
+                active_key.update(&self.db_session).await?;
+                Ok(Some(()))
+            }
+            None => Ok(None),
         }
     }
 }

@@ -1,11 +1,12 @@
 use crate::models::request::{
     AccessionPagination, AccessionPaginationWithPrivate, AuthorizeRequest, CreateAccessionRequest,
-    CreateAccessionRequestRaw, CreateSubjectRequest, DeleteSubjectRequest, LoginRequest,
-    SubjectPagination, UpdateAccessionRequest, UpdateSubjectRequest,
+    CreateAccessionRequestRaw, CreateSubjectRequest, CreateUserRequest, DeleteSubjectRequest,
+    LoginRequest, RevokeApiKeyRequest, SubjectPagination, UpdateAccessionRequest,
+    UpdateSubjectRequest, UpdateUserRequest, UserPagination,
 };
 use crate::models::response::{
     CreateApiKeyResponse, GetOneAccessionResponse, ListAccessionsResponse, ListSubjectsArResponse,
-    ListSubjectsEnResponse, SubjectResponse,
+    ListSubjectsEnResponse, ListUsersResponse, SubjectResponse, UserResponse,
 };
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::{Modify, OpenApi};
@@ -43,6 +44,12 @@ impl Modify for SecurityAddon {
         crate::routes::auth::authorize,
         crate::routes::auth::verify,
         crate::routes::auth::create_api_key,
+        crate::routes::auth::revoke_api_key,
+        crate::routes::auth::create_user,
+        crate::routes::auth::list_users,
+        crate::routes::auth::get_user,
+        crate::routes::auth::update_user,
+        crate::routes::auth::delete_user,
         crate::routes::subjects::create_subject,
         crate::routes::subjects::list_subjects,
         crate::routes::subjects::delete_subject,
@@ -66,7 +73,13 @@ impl Modify for SecurityAddon {
             SubjectPagination,
             SubjectResponse,
             ListSubjectsEnResponse,
-            ListSubjectsArResponse
+            ListSubjectsArResponse,
+            CreateUserRequest,
+            UpdateUserRequest,
+            UserPagination,
+            UserResponse,
+            ListUsersResponse,
+            RevokeApiKeyRequest
         )
     ),
     tags(

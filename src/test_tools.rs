@@ -219,6 +219,73 @@ impl AuthRepo for InMemoryAuthRepo {
     async fn delete_expired_api_keys(&self) {
         // No-op for tests
     }
+
+    async fn create_user(
+        &self,
+        email: String,
+        role: entity::sea_orm_active_enums::Role,
+        is_active: bool,
+    ) -> Result<entity::archive_user::Model, DbErr> {
+        Ok(entity::archive_user::Model {
+            id: Uuid::new_v4(),
+            email,
+            role,
+            is_active,
+        })
+    }
+
+    async fn update_user(
+        &self,
+        user_id: Uuid,
+        role: entity::sea_orm_active_enums::Role,
+        is_active: bool,
+    ) -> Result<Option<entity::archive_user::Model>, DbErr> {
+        Ok(Some(entity::archive_user::Model {
+            id: user_id,
+            email: "updated@example.com".to_string(),
+            role,
+            is_active,
+        }))
+    }
+
+    async fn get_user_by_id(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Option<entity::archive_user::Model>, DbErr> {
+        Ok(Some(entity::archive_user::Model {
+            id: user_id,
+            email: "test@example.com".to_string(),
+            role: entity::sea_orm_active_enums::Role::Researcher,
+            is_active: true,
+        }))
+    }
+
+    async fn list_users(
+        &self,
+        _page: u64,
+        _per_page: u64,
+        _email_filter: Option<String>,
+    ) -> Result<(Vec<entity::archive_user::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::archive_user::Model {
+                id: Uuid::new_v4(),
+                email: "test@example.com".to_string(),
+                role: entity::sea_orm_active_enums::Role::Researcher,
+                is_active: true,
+            }],
+            1,
+        ))
+    }
+
+    async fn delete_user(&self, _user_id: Uuid) -> Result<Option<()>, DbErr> {
+        Ok(Some(()))
+    }
+
+    async fn revoke_api_key(&self, _key_hash: String, _user_id: Uuid) -> Result<Option<()>, DbErr> {
+        // For tests, always return Some(()) to indicate success
+        // This simulates finding and revoking an API key
+        Ok(Some(()))
+    }
 }
 
 /// In-memory implementation of BrowsertrixRepo for testing.
