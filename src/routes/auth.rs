@@ -390,7 +390,11 @@ async fn delete_user(
     }
 
     // Delete user with admin check (service handles the check)
-    match state.auth_service.delete_user_with_admin_check(user_id).await {
+    match state
+        .auth_service
+        .delete_user_with_admin_check(user_id)
+        .await
+    {
         Ok(Ok(Some(()))) => {
             info!(
                 "User {} deleted by admin {}",
