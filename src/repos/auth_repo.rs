@@ -14,7 +14,7 @@ use rand::Rng;
 use sea_orm::{ActiveModelTrait, ActiveValue};
 use sea_orm::{
     ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect,
+    QuerySelect, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -515,10 +515,10 @@ impl AuthRepo for DBAuthRepo {
 
     /// Deletes a user and all associated sessions and API keys.
     async fn delete_user(&self, user_id: Uuid) -> Result<Option<()>, DbErr> {
+        let txn = self.db_session.begin().await?;
+
         // Check if user exists first
-        let user = ArchiveUser::find_by_id(user_id)
-            .one(&self.db_session)
-            .await?;
+        let user = ArchiveUser::find_by_id(user_id).one(&txn).await?;
 
         if user.is_none() {
             return Ok(None);
@@ -527,20 +527,19 @@ impl AuthRepo for DBAuthRepo {
         // Delete associated sessions first
         Session::delete_many()
             .filter(session::Column::UserId.eq(user_id))
-            .exec(&self.db_session)
+            .exec(&txn)
             .await?;
 
         // Delete associated API keys
         ApiKey::delete_many()
             .filter(api_key::Column::UserId.eq(user_id))
-            .exec(&self.db_session)
+            .exec(&txn)
             .await?;
 
         // Delete the user
-        ArchiveUser::delete_by_id(user_id)
-            .exec(&self.db_session)
-            .await?;
+        ArchiveUser::delete_by_id(user_id).exec(&txn).await?;
 
+        txn.commit().await?;
         Ok(Some(()))
     }
 

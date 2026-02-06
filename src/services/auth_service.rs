@@ -257,8 +257,31 @@ impl AuthService {
         })
     }
 
-    pub async fn delete_user(&self, user_id: Uuid) -> Result<Option<()>, DbErr> {
-        self.auth_repo.delete_user(user_id).await
+    /// Deletes a user after verifying they are not an admin.
+    /// Returns Ok(Ok(Some(()))) if deleted successfully,
+    /// Ok(Ok(None)) if user not found,
+    /// Ok(Err(message)) if user is an admin (cannot delete admins),
+    /// Err(DbErr) on database error.
+    pub async fn delete_user_with_admin_check(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Result<Option<()>, String>, DbErr> {
+        // First get the user to check if they're an admin
+        let user = self.auth_repo.get_user_by_id(user_id).await?;
+
+        match user {
+            Some(user) => {
+                // Cannot delete admin users
+                if user.role == Role::Admin {
+                    return Ok(Err("Cannot delete admin users".to_string()));
+                }
+
+                // Delete the user
+                let result = self.auth_repo.delete_user(user_id).await?;
+                Ok(Ok(result))
+            }
+            None => Ok(Ok(None)),
+        }
     }
 
     /// Revokes an API key by decoding it, hashing it, and marking it as revoked.

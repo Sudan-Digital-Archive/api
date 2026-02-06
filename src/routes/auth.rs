@@ -389,37 +389,19 @@ async fn delete_user(
         return (StatusCode::FORBIDDEN, "Only admins can delete users").into_response();
     }
 
-    // First get the user to check if they're an admin
-    match state.auth_service.get_user_by_id(user_id).await {
-        Ok(Some(user)) => {
-            // Cannot delete admin users
-            if user.role == Role::Admin {
-                return (StatusCode::BAD_REQUEST, "Cannot delete admin users").into_response();
-            }
-
-            // Delete user
-            match state.auth_service.delete_user(user_id).await {
-                Ok(Some(())) => {
-                    info!(
-                        "User {} deleted by admin {}",
-                        user_id, authenticated_user.user_id
-                    );
-                    StatusCode::NO_CONTENT.into_response()
-                }
-                Ok(None) => (StatusCode::NOT_FOUND, "User not found").into_response(),
-                Err(err) => {
-                    error!("Failed to delete user {}: {}", user_id, err);
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to delete user: {err}"),
-                    )
-                        .into_response()
-                }
-            }
+    // Delete user with admin check (service handles the check)
+    match state.auth_service.delete_user_with_admin_check(user_id).await {
+        Ok(Ok(Some(()))) => {
+            info!(
+                "User {} deleted by admin {}",
+                user_id, authenticated_user.user_id
+            );
+            StatusCode::NO_CONTENT.into_response()
         }
-        Ok(None) => (StatusCode::NOT_FOUND, "User not found").into_response(),
+        Ok(Ok(None)) => (StatusCode::NOT_FOUND, "User not found").into_response(),
+        Ok(Err(message)) => (StatusCode::BAD_REQUEST, message).into_response(),
         Err(err) => {
-            error!("Failed to get user {} for deletion check: {}", user_id, err);
+            error!("Failed to delete user {}: {}", user_id, err);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to delete user: {err}"),
