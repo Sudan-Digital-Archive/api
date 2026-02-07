@@ -111,8 +111,16 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(CollectionEnSubjects::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(CollectionEnSubjects::CollectionEnId).integer().not_null())
-                    .col(ColumnDef::new(CollectionEnSubjects::SubjectEnId).integer().not_null())
+                    .col(
+                        ColumnDef::new(CollectionEnSubjects::CollectionEnId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(CollectionEnSubjects::SubjectEnId)
+                            .integer()
+                            .not_null(),
+                    )
                     .primary_key(
                         Index::create()
                             .col(CollectionEnSubjects::CollectionEnId)
@@ -121,14 +129,20 @@ impl MigrationTrait for Migration {
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_en_subjects_collection_en")
-                            .from(CollectionEnSubjects::Table, CollectionEnSubjects::CollectionEnId)
+                            .from(
+                                CollectionEnSubjects::Table,
+                                CollectionEnSubjects::CollectionEnId,
+                            )
                             .to(CollectionEn::Table, CollectionEn::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_en_subjects_subject_en")
-                            .from(CollectionEnSubjects::Table, CollectionEnSubjects::SubjectEnId)
+                            .from(
+                                CollectionEnSubjects::Table,
+                                CollectionEnSubjects::SubjectEnId,
+                            )
                             .to(DublinMetadataSubjectEn::Table, DublinMetadataSubjectEn::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
@@ -141,8 +155,16 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(CollectionArSubjects::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(CollectionArSubjects::CollectionArId).integer().not_null())
-                    .col(ColumnDef::new(CollectionArSubjects::SubjectArId).integer().not_null())
+                    .col(
+                        ColumnDef::new(CollectionArSubjects::CollectionArId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(CollectionArSubjects::SubjectArId)
+                            .integer()
+                            .not_null(),
+                    )
                     .primary_key(
                         Index::create()
                             .col(CollectionArSubjects::CollectionArId)
@@ -151,14 +173,20 @@ impl MigrationTrait for Migration {
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_ar_subjects_collection_ar")
-                            .from(CollectionArSubjects::Table, CollectionArSubjects::CollectionArId)
+                            .from(
+                                CollectionArSubjects::Table,
+                                CollectionArSubjects::CollectionArId,
+                            )
                             .to(CollectionAr::Table, CollectionAr::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_ar_subjects_subject_ar")
-                            .from(CollectionArSubjects::Table, CollectionArSubjects::SubjectArId)
+                            .from(
+                                CollectionArSubjects::Table,
+                                CollectionArSubjects::SubjectArId,
+                            )
                             .to(DublinMetadataSubjectAr::Table, DublinMetadataSubjectAr::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
@@ -171,8 +199,16 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(CollectionEnAccessions::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(CollectionEnAccessions::CollectionEnId).integer().not_null())
-                    .col(ColumnDef::new(CollectionEnAccessions::AccessionId).integer().not_null())
+                    .col(
+                        ColumnDef::new(CollectionEnAccessions::CollectionEnId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(CollectionEnAccessions::AccessionId)
+                            .integer()
+                            .not_null(),
+                    )
                     .primary_key(
                         Index::create()
                             .col(CollectionEnAccessions::CollectionEnId)
@@ -181,14 +217,20 @@ impl MigrationTrait for Migration {
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_en_accessions_collection_en")
-                            .from(CollectionEnAccessions::Table, CollectionEnAccessions::CollectionEnId)
+                            .from(
+                                CollectionEnAccessions::Table,
+                                CollectionEnAccessions::CollectionEnId,
+                            )
                             .to(CollectionEn::Table, CollectionEn::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_en_accessions_accession")
-                            .from(CollectionEnAccessions::Table, CollectionEnAccessions::AccessionId)
+                            .from(
+                                CollectionEnAccessions::Table,
+                                CollectionEnAccessions::AccessionId,
+                            )
                             .to(Accession::Table, Accession::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
@@ -201,8 +243,16 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(CollectionArAccessions::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(CollectionArAccessions::CollectionArId).integer().not_null())
-                    .col(ColumnDef::new(CollectionArAccessions::AccessionId).integer().not_null())
+                    .col(
+                        ColumnDef::new(CollectionArAccessions::CollectionArId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(CollectionArAccessions::AccessionId)
+                            .integer()
+                            .not_null(),
+                    )
                     .primary_key(
                         Index::create()
                             .col(CollectionArAccessions::CollectionArId)
@@ -211,14 +261,20 @@ impl MigrationTrait for Migration {
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_ar_accessions_collection_ar")
-                            .from(CollectionArAccessions::Table, CollectionArAccessions::CollectionArId)
+                            .from(
+                                CollectionArAccessions::Table,
+                                CollectionArAccessions::CollectionArId,
+                            )
                             .to(CollectionAr::Table, CollectionAr::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_collection_ar_accessions_accession")
-                            .from(CollectionArAccessions::Table, CollectionArAccessions::AccessionId)
+                            .from(
+                                CollectionArAccessions::Table,
+                                CollectionArAccessions::AccessionId,
+                            )
                             .to(Accession::Table, Accession::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
@@ -231,10 +287,18 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(CollectionArAccessions::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(CollectionArAccessions::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_table(Table::drop().table(CollectionEnAccessions::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(CollectionEnAccessions::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
             .drop_table(Table::drop().table(CollectionArSubjects::Table).to_owned())

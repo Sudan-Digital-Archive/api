@@ -271,3 +271,94 @@ pub struct RevokeApiKeyRequest {
     #[validate(length(min = 1))]
     pub api_key: String,
 }
+
+/// Pagination parameters for listing collections (public only).
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct CollectionPagination {
+    #[schema(default = 0)]
+    pub page: u64,
+    #[validate(range(min = 1, max = 200))]
+    #[schema(default = 20, minimum = 1, maximum = 200)]
+    pub per_page: u64,
+    pub lang: MetadataLanguage,
+}
+
+impl Default for CollectionPagination {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            per_page: 20,
+            lang: MetadataLanguage::English,
+        }
+    }
+}
+
+/// Pagination parameters for listing collections with private filter (requires auth).
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct CollectionPaginationWithPrivate {
+    #[schema(default = 0)]
+    pub page: u64,
+    #[validate(range(min = 1, max = 200))]
+    #[schema(default = 20, minimum = 1, maximum = 200)]
+    pub per_page: u64,
+    pub lang: MetadataLanguage,
+    pub is_public: Option<bool>,
+}
+
+impl Default for CollectionPaginationWithPrivate {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            per_page: 20,
+            lang: MetadataLanguage::English,
+            is_public: None,
+        }
+    }
+}
+
+/// Request for creating a new collection.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct CreateCollectionRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub title: String,
+    #[validate(length(min = 1, max = 2000))]
+    pub description: Option<String>,
+    pub is_public: bool,
+    #[validate(length(min = 1, max = 200))]
+    #[schema(example = json!([1, 2, 3]))]
+    pub subject_ids: Vec<i32>,
+}
+
+/// Request for updating an existing collection (idempotent PUT).
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateCollectionRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub title: String,
+    #[validate(length(min = 1, max = 2000))]
+    pub description: Option<String>,
+    pub is_public: bool,
+    #[validate(length(min = 1, max = 200))]
+    #[schema(example = json!([1, 2, 3]))]
+    pub subject_ids: Vec<i32>,
+}
+
+/// Query parameters for collection endpoints that require a language specification.
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct CollectionLangParam {
+    /// Language for the collection (english or arabic)
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for CollectionLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}
