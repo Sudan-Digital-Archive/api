@@ -14,11 +14,13 @@ use crate::config::build_app_config;
 use crate::repos::accessions_repo::DBAccessionsRepo;
 use crate::repos::auth_repo::DBAuthRepo;
 use crate::repos::browsertrix_repo::{BrowsertrixRepo, HTTPBrowsertrixRepo};
+use crate::repos::collections_repo::DBCollectionsRepo;
 use crate::repos::emails_repo::PostmarkEmailsRepo;
 use crate::repos::s3_repo::{DigitalOceanSpacesRepo, S3Repo};
 use crate::repos::subjects_repo::DBSubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
+use crate::services::collections_service::CollectionsService;
 use crate::services::subjects_service::SubjectsService;
 use reqwest::Client;
 use sea_orm::Database;
@@ -48,7 +50,12 @@ async fn main() {
         api_key: app_config.postmark_api_key,
         postmark_api_base: app_config.postmark_api_base,
     };
-    let subjects_repo = DBSubjectsRepo { db_session };
+    let subjects_repo = DBSubjectsRepo {
+        db_session: db_session.clone(),
+    };
+    let collections_repo = DBCollectionsRepo {
+        db_session: db_session.clone(),
+    };
     let mut http_btrix_repo = HTTPBrowsertrixRepo {
         client: Client::new(),
         login_url: app_config.browsertrix.login_url,
@@ -83,11 +90,16 @@ async fn main() {
         jwt_cookie_domain: app_config.jwt_cookie_domain,
     };
     let subjects_service = SubjectsService {
+        subjects_repo: Arc::new(subjects_repo.clone()),
+    };
+    let collections_service = CollectionsService {
+        collections_repo: Arc::new(collections_repo),
         subjects_repo: Arc::new(subjects_repo),
     };
     let app_state = AppState {
         accessions_service,
         auth_service,
+        collections_service,
         subjects_service,
     };
     let app = create_app(app_state, dolly_the_app_config, false);

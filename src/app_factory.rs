@@ -17,10 +17,12 @@ use crate::config::AppConfig;
 use crate::open_api_spec::ApiDoc;
 use crate::routes::accessions::get_accessions_routes;
 use crate::routes::auth::get_auth_routes;
+use crate::routes::collections::get_collections_routes;
 use crate::routes::health::healthcheck;
 use crate::routes::subjects::get_subjects_routes;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
+use crate::services::collections_service::CollectionsService;
 use crate::services::subjects_service::SubjectsService;
 use axum::extract::MatchedPath;
 use axum::http::Request;
@@ -44,6 +46,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
 pub struct AppState {
     pub accessions_service: AccessionsService,
     pub auth_service: AuthService,
+    pub collections_service: CollectionsService,
     pub subjects_service: SubjectsService,
 }
 
@@ -126,6 +129,7 @@ fn build_routes(api: utoipa::openapi::OpenApi, app_config: AppConfig) -> Router<
         ))
         .layer(CompressionLayer::new());
     let accessions_routes = get_accessions_routes(app_config.max_file_upload_size);
+    let collections_routes = get_collections_routes();
     let subjects_routes = get_subjects_routes();
     let auth_routes = get_auth_routes();
     let api_prefix = app_config.api_prefix.clone();
@@ -138,6 +142,7 @@ fn build_routes(api: utoipa::openapi::OpenApi, app_config: AppConfig) -> Router<
 
     let api_v1 = Router::new()
         .merge(accessions_routes)
+        .merge(collections_routes)
         .merge(subjects_routes)
         .merge(auth_routes);
     Router::new()

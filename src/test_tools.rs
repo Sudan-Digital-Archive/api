@@ -15,11 +15,13 @@ use crate::models::response::CreateCrawlResponse;
 use crate::repos::accessions_repo::AccessionsRepo;
 use crate::repos::auth_repo::{ApiKeyUserInfo, AuthRepo};
 use crate::repos::browsertrix_repo::BrowsertrixRepo;
+use crate::repos::collections_repo::CollectionsRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::s3_repo::S3Repo;
 use crate::repos::subjects_repo::SubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
+use crate::services::collections_service::CollectionsService;
 use crate::services::subjects_service::SubjectsService;
 use ::entity::sea_orm_active_enums::{DublinMetadataFormat, Role};
 use async_trait::async_trait;
@@ -28,6 +30,8 @@ use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use entity::accession::Model as AccessionModel;
 use entity::accessions_with_metadata::Model as AccessionsWithMetadataModel;
+use entity::collection_ar::Model as CollectionArModel;
+use entity::collection_en::Model as CollectionEnModel;
 use entity::dublin_metadata_subject_ar::Model as DublinMetadataSubjectArModel;
 use entity::dublin_metadata_subject_en::Model as DublinMetadataSubjectEnModel;
 use entity::sea_orm_active_enums::CrawlStatus;
@@ -157,6 +161,71 @@ impl SubjectsRepo for InMemorySubjectsRepo {
         _metadata_language: MetadataLanguage,
     ) -> Result<bool, DbErr> {
         Ok(true)
+    }
+}
+
+/// In-memory implementation of CollectionsRepo for testing.
+/// Provides mock data for collection-related operations.
+#[derive(Clone, Debug, Default)]
+pub struct InMemoryCollectionsRepo {}
+
+#[async_trait]
+impl CollectionsRepo for InMemoryCollectionsRepo {
+    async fn list_paginated_en(
+        &self,
+        page: u64,
+        per_page: u64,
+        _is_public: Option<bool>,
+    ) -> Result<(Vec<CollectionEnModel>, u64), DbErr> {
+        Ok(mock_paginated_collections(page, per_page))
+    }
+
+    async fn list_paginated_ar(
+        &self,
+        page: u64,
+        per_page: u64,
+        _is_public: Option<bool>,
+    ) -> Result<(Vec<CollectionArModel>, u64), DbErr> {
+        Ok(mock_paginated_collections_ar(page, per_page))
+    }
+
+    async fn get_one(
+        &self,
+        _id: i32,
+        _lang: MetadataLanguage,
+    ) -> Result<Option<CollectionEnModel>, DbErr> {
+        Ok(Some(mock_one_collection()))
+    }
+
+    async fn create_one(
+        &self,
+        _title: String,
+        _description: Option<String>,
+        _is_public: bool,
+        _subject_ids: Vec<i32>,
+        _lang: MetadataLanguage,
+    ) -> Result<i32, DbErr> {
+        Ok(10)
+    }
+
+    async fn update_one(
+        &self,
+        _id: i32,
+        _title: String,
+        _description: Option<String>,
+        _is_public: bool,
+        _subject_ids: Vec<i32>,
+        _lang: MetadataLanguage,
+    ) -> Result<Option<CollectionEnModel>, DbErr> {
+        Ok(Some(mock_one_collection()))
+    }
+
+    async fn delete_one(
+        &self,
+        _id: i32,
+        _lang: MetadataLanguage,
+    ) -> Result<Option<CollectionEnModel>, DbErr> {
+        Ok(Some(mock_one_collection()))
     }
 }
 
@@ -451,14 +520,26 @@ pub fn build_test_subjects_service() -> SubjectsService {
     SubjectsService { subjects_repo }
 }
 
+/// Builds a test collections service with in-memory repositories.
+pub fn build_test_collections_service() -> CollectionsService {
+    let collections_repo = Arc::new(InMemoryCollectionsRepo::default());
+    let subjects_repo = Arc::new(InMemorySubjectsRepo::default());
+    CollectionsService {
+        collections_repo,
+        subjects_repo,
+    }
+}
+
 /// Creates a test application instance with in-memory services.
 /// The returned Router can be used with axum test utilities.
 pub fn build_test_app() -> Router {
     let accessions_service = build_test_accessions_service();
+    let collections_service = build_test_collections_service();
     let subjects_service = build_test_subjects_service();
     let auth_service = build_test_auth_service();
     let app_state = AppState {
         accessions_service,
+        collections_service,
         subjects_service,
         auth_service,
     };
@@ -554,4 +635,48 @@ pub fn get_mock_jwt() -> String {
     let jwt =
         encode(&Header::default(), &claims, &JWT_KEYS.encoding).expect("Failed to encode JWT");
     jwt
+}
+
+/// Creates a mock paginated collection of English collections.
+pub fn mock_paginated_collections(page: u64, per_page: u64) -> (Vec<CollectionEnModel>, u64) {
+    let total_items = 10u64;
+    let num_pages = (total_items + per_page - 1) / per_page;
+    let items = vec![mock_one_collection()];
+    // Return only items for the requested page
+    if page >= num_pages {
+        return (vec![], num_pages);
+    }
+    (items, num_pages)
+}
+
+/// Creates a mock paginated collection of Arabic collections.
+pub fn mock_paginated_collections_ar(page: u64, per_page: u64) -> (Vec<CollectionArModel>, u64) {
+    let total_items = 10u64;
+    let num_pages = (total_items + per_page - 1) / per_page;
+    let items = vec![mock_one_collection_ar()];
+    // Return only items for the requested page
+    if page >= num_pages {
+        return (vec![], num_pages);
+    }
+    (items, num_pages)
+}
+
+/// Creates a single mock English collection for testing.
+pub fn mock_one_collection() -> CollectionEnModel {
+    CollectionEnModel {
+        id: 1,
+        title: "Mock Collection".to_string(),
+        description: Some("A mock collection for testing".to_string()),
+        is_public: true,
+    }
+}
+
+/// Creates a single mock Arabic collection for testing.
+pub fn mock_one_collection_ar() -> CollectionArModel {
+    CollectionArModel {
+        id: 1,
+        title: "Arabic Mock Collection".to_string(),
+        description: Some("A mock collection in Arabic".to_string()),
+        is_public: true,
+    }
 }

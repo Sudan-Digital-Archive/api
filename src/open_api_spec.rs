@@ -1,12 +1,15 @@
 use crate::models::request::{
-    AccessionPagination, AccessionPaginationWithPrivate, AuthorizeRequest, CreateAccessionRequest,
-    CreateAccessionRequestRaw, CreateSubjectRequest, CreateUserRequest, DeleteSubjectRequest,
-    LoginRequest, RevokeApiKeyRequest, SubjectPagination, UpdateAccessionRequest,
-    UpdateSubjectRequest, UpdateUserRequest, UserPagination,
+    AccessionPagination, AccessionPaginationWithPrivate, AuthorizeRequest, CollectionLangParam,
+    CollectionPagination, CollectionPaginationWithPrivate, CreateAccessionRequest,
+    CreateAccessionRequestRaw, CreateCollectionRequest, CreateSubjectRequest, CreateUserRequest,
+    DeleteSubjectRequest, LoginRequest, RevokeApiKeyRequest, SubjectPagination,
+    UpdateAccessionRequest, UpdateCollectionRequest, UpdateSubjectRequest, UpdateUserRequest,
+    UserPagination,
 };
 use crate::models::response::{
-    CreateApiKeyResponse, GetOneAccessionResponse, ListAccessionsResponse, ListSubjectsArResponse,
-    ListSubjectsEnResponse, ListUsersResponse, SubjectResponse, UserResponse,
+    CollectionResponse, CreateApiKeyResponse, GetOneAccessionResponse, ListAccessionsResponse,
+    ListCollectionsResponse, ListSubjectsArResponse, ListSubjectsEnResponse, ListUsersResponse,
+    SubjectResponse, UserResponse,
 };
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::{Modify, OpenApi};
@@ -53,7 +56,13 @@ impl Modify for SecurityAddon {
         crate::routes::subjects::create_subject,
         crate::routes::subjects::list_subjects,
         crate::routes::subjects::delete_subject,
-        crate::routes::subjects::update_subject
+        crate::routes::subjects::update_subject,
+        crate::routes::collections::list_collections,
+        crate::routes::collections::list_collections_private,
+        crate::routes::collections::get_one_collection,
+        crate::routes::collections::create_collection,
+        crate::routes::collections::update_collection,
+        crate::routes::collections::delete_collection
     ),
     components(
         schemas(
@@ -79,14 +88,22 @@ impl Modify for SecurityAddon {
             UserPagination,
             UserResponse,
             ListUsersResponse,
-            RevokeApiKeyRequest
+            RevokeApiKeyRequest,
+            CollectionPagination,
+            CollectionPaginationWithPrivate,
+            CollectionLangParam,
+            CreateCollectionRequest,
+            UpdateCollectionRequest,
+            CollectionResponse,
+            ListCollectionsResponse
         )
     ),
     tags(
         (name = "Healthcheck", description = "Health check endpoints"),
         (name = "Accessions", description = "Accession management endpoints"),
         (name = "Auth", description = "User authentication endpoints"),
-        (name = "Subjects", description = "Subject management endpoints")
+        (name = "Subjects", description = "Subject management endpoints"),
+        (name = "Collections", description = "Collection management endpoints")
     ),
     modifiers(&SecurityAddon),
     servers(

@@ -204,3 +204,21 @@ pub struct ListUsersResponse {
     pub page: u64,
     pub per_page: u64,
 }
+
+/// Response containing a single collection.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct CollectionResponse {
+    pub id: i32,
+    pub title: String,
+    pub description: Option<String>,
+    pub is_public: bool,
+}
+
+/// Response for listing collections with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListCollectionsResponse {
+    pub items: Vec<CollectionResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}
