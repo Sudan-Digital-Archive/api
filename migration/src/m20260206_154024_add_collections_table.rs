@@ -36,20 +36,6 @@ enum CollectionArSubjects {
 }
 
 #[derive(DeriveIden)]
-enum CollectionEnAccessions {
-    Table,
-    CollectionEnId,
-    AccessionId,
-}
-
-#[derive(DeriveIden)]
-enum CollectionArAccessions {
-    Table,
-    CollectionArId,
-    AccessionId,
-}
-
-#[derive(DeriveIden)]
 enum DublinMetadataSubjectEn {
     Table,
     Id,
@@ -57,12 +43,6 @@ enum DublinMetadataSubjectEn {
 
 #[derive(DeriveIden)]
 enum DublinMetadataSubjectAr {
-    Table,
-    Id,
-}
-
-#[derive(DeriveIden)]
-enum Accession {
     Table,
     Id,
 }
@@ -194,112 +174,10 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        manager
-            .create_table(
-                Table::create()
-                    .table(CollectionEnAccessions::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(CollectionEnAccessions::CollectionEnId)
-                            .integer()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(CollectionEnAccessions::AccessionId)
-                            .integer()
-                            .not_null(),
-                    )
-                    .primary_key(
-                        Index::create()
-                            .col(CollectionEnAccessions::CollectionEnId)
-                            .col(CollectionEnAccessions::AccessionId),
-                    )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk_collection_en_accessions_collection_en")
-                            .from(
-                                CollectionEnAccessions::Table,
-                                CollectionEnAccessions::CollectionEnId,
-                            )
-                            .to(CollectionEn::Table, CollectionEn::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk_collection_en_accessions_accession")
-                            .from(
-                                CollectionEnAccessions::Table,
-                                CollectionEnAccessions::AccessionId,
-                            )
-                            .to(Accession::Table, Accession::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_table(
-                Table::create()
-                    .table(CollectionArAccessions::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(CollectionArAccessions::CollectionArId)
-                            .integer()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(CollectionArAccessions::AccessionId)
-                            .integer()
-                            .not_null(),
-                    )
-                    .primary_key(
-                        Index::create()
-                            .col(CollectionArAccessions::CollectionArId)
-                            .col(CollectionArAccessions::AccessionId),
-                    )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk_collection_ar_accessions_collection_ar")
-                            .from(
-                                CollectionArAccessions::Table,
-                                CollectionArAccessions::CollectionArId,
-                            )
-                            .to(CollectionAr::Table, CollectionAr::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk_collection_ar_accessions_accession")
-                            .from(
-                                CollectionArAccessions::Table,
-                                CollectionArAccessions::AccessionId,
-                            )
-                            .to(Accession::Table, Accession::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .to_owned(),
-            )
-            .await?;
-
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(
-                Table::drop()
-                    .table(CollectionArAccessions::Table)
-                    .to_owned(),
-            )
-            .await?;
-        manager
-            .drop_table(
-                Table::drop()
-                    .table(CollectionEnAccessions::Table)
-                    .to_owned(),
-            )
-            .await?;
         manager
             .drop_table(Table::drop().table(CollectionArSubjects::Table).to_owned())
             .await?;
