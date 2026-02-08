@@ -5,12 +5,11 @@
 
 use crate::models::common::MetadataLanguage;
 use crate::models::response::{CollectionResponse, ListCollectionsResponse};
-use crate::repos::collections_repo::CollectionsRepo;
+use crate::repos::collections_repo::{CollectionWithSubjects, CollectionsRepo};
 use crate::repos::subjects_repo::SubjectsRepo;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use entity::collection_en::Model as CollectionEnModel;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -49,27 +48,9 @@ impl CollectionsService {
                     .await
             }
             MetadataLanguage::Arabic => {
-                match self
-                    .collections_repo
+                self.collections_repo
                     .list_paginated_ar(page, per_page, is_public)
                     .await
-                {
-                    Ok(ar_result) => {
-                        // Convert Arabic models to English models for uniform response
-                        let converted: Vec<CollectionEnModel> = ar_result
-                            .0
-                            .into_iter()
-                            .map(|ar| CollectionEnModel {
-                                id: ar.id,
-                                title: ar.title,
-                                description: ar.description,
-                                is_public: ar.is_public,
-                            })
-                            .collect();
-                        Ok((converted, ar_result.1))
-                    }
-                    Err(e) => Err(e),
-                }
             }
         };
 
@@ -78,9 +59,12 @@ impl CollectionsService {
                 error!(%err, "Error occurred paginating collections");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
             }
-            Ok((collections, num_pages)) => {
+            Ok((collections_with_subjects, num_pages)) => {
                 let resp = ListCollectionsResponse {
-                    items: collections.into_iter().map(Into::into).collect(),
+                    items: collections_with_subjects
+                        .into_iter()
+                        .map(CollectionResponse::from)
+                        .collect(),
                     num_pages,
                     page,
                     per_page,
@@ -262,13 +246,14 @@ impl CollectionsService {
     }
 }
 
-impl From<CollectionEnModel> for CollectionResponse {
-    fn from(model: CollectionEnModel) -> Self {
+impl From<CollectionWithSubjects> for CollectionResponse {
+    fn from(cws: CollectionWithSubjects) -> Self {
         Self {
-            id: model.id,
-            title: model.title,
-            description: model.description,
-            is_public: model.is_public,
+            id: cws.collection.id,
+            title: cws.collection.title,
+            description: cws.collection.description,
+            is_public: cws.collection.is_public,
+            subject_ids: cws.subject_ids,
         }
     }
 }
