@@ -100,17 +100,33 @@ async fn authorize(
     path = "/api/v1/auth",
     tag = "Auth",
     responses(
-        (status = 200, description = "OK", body = String),
-        (status = 401, description = "Unauthorized")
+        (status = 200, description = "OK", body = UserResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 500, description = "Internal server error")
     ),
     security(
         ("jwt_cookie_auth" = []),
         ("api_key_auth" = [])
     )
 )]
-async fn verify(State(_state): State<AppState>, authenticated_user: AuthenticatedUser) -> Response {
-    let user_data = format!("Verifying your account...\nYour data:\n{authenticated_user}");
-    (StatusCode::OK, user_data).into_response()
+async fn verify(State(state): State<AppState>, authenticated_user: AuthenticatedUser) -> Response {
+    match state
+        .auth_service
+        .get_user_by_id(authenticated_user.id)
+        .await
+    {
+        Ok(Some(user)) => (StatusCode::OK, Json(user)).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "User not found").into_response(),
+        Err(err) => {
+            error!("Failed to get user {}: {}", authenticated_user.id, err);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get user: {err}"),
+            )
+                .into_response()
+        }
+    }
 }
 
 #[utoipa::path(
@@ -142,7 +158,7 @@ async fn create_api_key(
         Ok(api_key_secret) => {
             info!(
                 "API key created by admin {} for user {}",
-                authenticated_user.user_id, user_id
+                authenticated_user.id, user_id
             );
             let auth_service = state.auth_service.clone();
             tokio::spawn(async move {
@@ -154,7 +170,7 @@ async fn create_api_key(
         Err(err) => {
             error!(
                 "Failed to create API key by admin {} for user {}: {}",
-                authenticated_user.user_id, user_id, err
+                authenticated_user.id, user_id, err
             );
             let message = format!("Failed to create API key: {err}");
             (StatusCode::INTERNAL_SERVER_ERROR, message).into_response()
@@ -197,7 +213,7 @@ async fn create_user(
     // Create user
     match state.auth_service.create_user(payload).await {
         Ok(user) => {
-            info!("User created by admin {}", authenticated_user.user_id);
+            info!("User created by admin {}", authenticated_user.id);
             (StatusCode::CREATED, Json(user)).into_response()
         }
         Err(DbErr::Query(err)) if err.to_string().contains("unique") => {
@@ -344,7 +360,7 @@ async fn update_user(
         Ok(Some(user)) => {
             info!(
                 "User {} updated by admin {}",
-                user_id, authenticated_user.user_id
+                user_id, authenticated_user.id
             );
             (StatusCode::OK, Json(user)).into_response()
         }
@@ -398,7 +414,7 @@ async fn delete_user(
         Ok(Ok(Some(()))) => {
             info!(
                 "User {} deleted by admin {}",
-                user_id, authenticated_user.user_id
+                user_id, authenticated_user.id
             );
             StatusCode::NO_CONTENT.into_response()
         }
@@ -460,7 +476,7 @@ async fn revoke_api_key(
         Ok(Some(())) => {
             info!(
                 "API key revoked by admin {} for user {}",
-                authenticated_user.user_id, user_id
+                authenticated_user.id, user_id
             );
             StatusCode::NO_CONTENT.into_response()
         }
@@ -594,9 +610,11 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body().collect().await.unwrap().to_bytes();
-        let actual = String::from_utf8((&body).to_vec()).unwrap();
-        assert!(actual.contains("Verifying your account"));
-        assert!(actual.contains("someuser@gmail.com"));
+        let actual: UserResponse = serde_json::from_slice(&body).unwrap();
+        // Response should contain valid user data
+        assert!(!actual.email.is_empty());
+        // Note: Mock returns Researcher role for user lookup
+        assert_eq!(actual.role, Role::Researcher);
     }
 
     #[tokio::test]
@@ -645,7 +663,7 @@ mod tests {
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
-            sub: "researcher@gmail.com".to_string(),
+            sub: Uuid::new_v4(),
             exp: expiry_time.timestamp() as usize,
             role: Role::Researcher,
         };
@@ -751,10 +769,11 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body().collect().await.unwrap().to_bytes();
-        let actual = String::from_utf8((&body).to_vec()).unwrap();
-        assert!(actual.contains("Verifying your account"));
-        // With API key auth, the user_id is the email from the API key info
-        assert!(actual.contains("test@example.com"));
+        let actual: UserResponse = serde_json::from_slice(&body).unwrap();
+        // Response should contain valid user data from API key auth
+        assert!(!actual.email.is_empty());
+        // Note: Mock returns Researcher role for user lookup
+        assert_eq!(actual.role, Role::Researcher);
     }
 
     // User management endpoint tests
@@ -796,7 +815,7 @@ mod tests {
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
-            sub: "researcher@gmail.com".to_string(),
+            sub: Uuid::new_v4(),
             exp: expiry_time.timestamp() as usize,
             role: Role::Researcher,
         };
@@ -882,7 +901,7 @@ mod tests {
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
-            sub: "researcher@gmail.com".to_string(),
+            sub: Uuid::new_v4(),
             exp: expiry_time.timestamp() as usize,
             role: Role::Researcher,
         };
@@ -935,7 +954,7 @@ mod tests {
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
-            sub: "researcher@gmail.com".to_string(),
+            sub: Uuid::new_v4(),
             exp: expiry_time.timestamp() as usize,
             role: Role::Researcher,
         };
@@ -997,7 +1016,7 @@ mod tests {
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
-            sub: "researcher@gmail.com".to_string(),
+            sub: Uuid::new_v4(),
             exp: expiry_time.timestamp() as usize,
             role: Role::Researcher,
         };
@@ -1056,7 +1075,7 @@ mod tests {
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
-            sub: "researcher@gmail.com".to_string(),
+            sub: Uuid::new_v4(),
             exp: expiry_time.timestamp() as usize,
             role: Role::Researcher,
         };
@@ -1118,7 +1137,7 @@ mod tests {
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
-            sub: "researcher@gmail.com".to_string(),
+            sub: Uuid::new_v4(),
             exp: expiry_time.timestamp() as usize,
             role: Role::Researcher,
         };

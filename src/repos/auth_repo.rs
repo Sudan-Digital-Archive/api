@@ -21,12 +21,14 @@ use sha2::{Digest, Sha256};
 use tracing::{error, info};
 use uuid::Uuid;
 
-/// Response containing user email and role from API key verification.
+/// Response containing user info from API key verification.
 ///
 /// This struct is returned when an API key is successfully verified and contains
-/// the associated user's email address and their role in the system.
+/// the associated user's ID, email address and their role in the system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiKeyUserInfo {
+    /// The ID of the user associated with the verified API key
+    pub user_id: Uuid,
     /// The email address of the user associated with the verified API key
     pub email: String,
     /// The role of the user (e.g., researcher, admin)
@@ -409,6 +411,7 @@ impl AuthRepo for DBAuthRepo {
 
                 match user {
                     Some(user) => Ok(Some(ApiKeyUserInfo {
+                        user_id: user.id,
                         email: user.email,
                         role: user.role,
                     })),

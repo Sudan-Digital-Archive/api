@@ -280,6 +280,7 @@ impl AuthRepo for InMemoryAuthRepo {
 
     async fn verify_api_key(&self, _api_key: String) -> Result<Option<ApiKeyUserInfo>, DbErr> {
         Ok(Some(ApiKeyUserInfo {
+            user_id: Uuid::new_v4(),
             email: "test@example.com".to_string(),
             role: Role::Admin,
         }))
@@ -490,6 +491,7 @@ impl S3Repo for InMemoryS3Repo {
 /// Useful for unit testing service functionality without database connections.
 pub fn build_test_accessions_service() -> AccessionsService {
     let accessions_repo = Arc::new(InMemoryAccessionsRepo::default());
+    let auth_repo = Arc::new(InMemoryAuthRepo::default());
     let browsertrix_repo = Arc::new(InMemoryBrowsertrixRepo {});
     let emails_repo = Arc::new(InMemoryEmailsRepo::default());
     let s3_repo = Arc::new(InMemoryS3Repo {
@@ -497,6 +499,7 @@ pub fn build_test_accessions_service() -> AccessionsService {
     });
     AccessionsService {
         accessions_repo,
+        auth_repo,
         browsertrix_repo,
         emails_repo,
         s3_repo,
@@ -628,7 +631,7 @@ pub fn mock_paginated_subjects_ar() -> (Vec<DublinMetadataSubjectArModel>, u64) 
 pub fn get_mock_jwt() -> String {
     let expiry_time: DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
     let claims = JWTClaims {
-        sub: "someuser@gmail.com".to_string(),
+        sub: Uuid::new_v4(),
         exp: expiry_time.timestamp() as usize,
         role: Role::Admin,
     };

@@ -143,7 +143,7 @@ async fn create_accession_crawl(
     tokio::spawn(async move {
         state
             .accessions_service
-            .create_one(payload, authenticated_user.user_id)
+            .create_one(payload, authenticated_user.id)
             .await;
     });
     (StatusCode::CREATED, "Started browsertrix crawl task!").into_response()
@@ -344,6 +344,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use tower::ServiceExt;
+    use uuid::Uuid;
 
     async fn build_multipart_form_data(
         metadata_json: serde_json::Value,
@@ -404,7 +405,7 @@ mod tests {
                     s3_filename: Some("test-file.wacz".to_string()),
                     send_email_notification: true,
                 },
-                "archiver@gmail.com".to_string(),
+                Uuid::new_v4(),
             )
             .await;
     }
@@ -427,7 +428,7 @@ mod tests {
                     s3_filename: Some("test-file-2.wacz".to_string()),
                     send_email_notification: true,
                 },
-                "emailsare4eva@aol.com".to_string(),
+                Uuid::new_v4(),
             )
             .await;
     }
