@@ -11,6 +11,7 @@ use jsonwebtoken::{decode, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt;
+use uuid::Uuid;
 #[derive(Debug)]
 pub enum AuthError {
     InvalidToken,
@@ -30,7 +31,7 @@ impl IntoResponse for AuthError {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JWTClaims {
-    pub sub: String,
+    pub sub: Uuid,
     pub exp: usize,
     pub role: Role,
 }
@@ -46,7 +47,7 @@ impl fmt::Display for JWTClaims {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthenticatedUser {
-    pub user_id: String,
+    pub id: Uuid,
     pub expiry: Option<usize>,
     pub role: Role,
 }
@@ -56,7 +57,7 @@ impl fmt::Display for AuthenticatedUser {
         write!(
             f,
             "UserId: {}\nExpiry: {:?}\nRole: {:?}",
-            self.user_id, self.expiry, self.role
+            self.id, self.expiry, self.role
         )
     }
 }
@@ -74,7 +75,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
                 match verify_result {
                     Ok(Some(user_info)) => {
                         return Ok(AuthenticatedUser {
-                            user_id: user_info.email,
+                            id: user_info.user_id,
                             expiry: None,
                             role: user_info.role,
                         });
@@ -109,7 +110,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
 
         let claims = token_data.claims;
         Ok(AuthenticatedUser {
-            user_id: claims.sub,
+            id: claims.sub,
             expiry: Some(claims.exp),
             role: claims.role,
         })

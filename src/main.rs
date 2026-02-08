@@ -80,6 +80,7 @@ async fn main() {
     .expect("Could not create DigitalOcean Spaces repo");
     let accessions_service = AccessionsService {
         accessions_repo: Arc::new(accessions_repo),
+        auth_repo: Arc::new(auth_repo.clone()),
         browsertrix_repo: Arc::new(http_btrix_repo),
         emails_repo: Arc::new(emails_repo.clone()),
         s3_repo: Arc::new(digital_ocean_spaces_repo),

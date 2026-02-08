@@ -9,6 +9,7 @@ use crate::models::request::{
 };
 use crate::models::response::{GetOneAccessionResponse, ListAccessionsResponse};
 use crate::repos::accessions_repo::AccessionsRepo;
+use crate::repos::auth_repo::AuthRepo;
 use crate::repos::browsertrix_repo::BrowsertrixRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::s3_repo::S3Repo;
@@ -46,6 +47,7 @@ enum MultiPartExtractionStep {
 #[derive(Clone)]
 pub struct AccessionsService {
     pub accessions_repo: Arc<dyn AccessionsRepo>,
+    pub auth_repo: Arc<dyn AuthRepo>,
     pub browsertrix_repo: Arc<dyn BrowsertrixRepo>,
     pub emails_repo: Arc<dyn EmailsRepo>,
     pub s3_repo: Arc<dyn S3Repo>,
@@ -191,8 +193,8 @@ impl AccessionsService {
     ///
     /// # Arguments
     /// * `payload` - The creation request containing URL and metadata
-    /// * `user_email` - Email address to send user to upon successful crawl
-    pub async fn create_one(self, payload: CreateAccessionRequest, user_email: String) {
+    /// * `user_id` - UUID of the user who requested the crawl
+    pub async fn create_one(self, payload: CreateAccessionRequest, user_id: Uuid) {
         let create_crawl_request = CreateCrawlRequest {
             url: payload.url.clone(),
             browser_profile: payload.browser_profile.clone(),
@@ -280,24 +282,39 @@ impl AccessionsService {
                                     Ok(id) => {
                                         info!("Crawl result written to db successfully");
                                         if payload.send_email_notification {
-                                            let email_subject = format!(
-                                                "Your URL {} has been archived!",
-                                                payload.url
-                                            );
-                                            let email_body = format!(
-                                                "We have archived your <a href='https://sudandigitalarchive.com/archive/{}?isPrivate={}&lang={}'>url</a>.",
-                                                id, payload.is_private, payload.metadata_language
-                                            );
-                                            let email_result = self
-                                                .emails_repo
-                                                .send_email(user_email, email_subject, email_body)
-                                                .await;
-                                            info!(
-                                                "Email sent to user with id {id} for url {}",
-                                                payload.url
-                                            );
-                                            if let Err(err) = email_result {
-                                                error!(%err, "Error occurred sending email to user");
+                                            // Look up user email only when needed
+                                            match self.auth_repo.get_user_by_id(user_id).await {
+                                                Ok(Some(user)) => {
+                                                    let email_subject = format!(
+                                                        "Your URL {} has been archived!",
+                                                        payload.url
+                                                    );
+                                                    let email_body = format!(
+                                                        "We have archived your <a href='https://sudandigitalarchive.com/archive/{}?isPrivate={}&lang={}'>url</a>.",
+                                                        id, payload.is_private, payload.metadata_language
+                                                    );
+                                                    let email_result = self
+                                                        .emails_repo
+                                                        .send_email(
+                                                            user.email,
+                                                            email_subject,
+                                                            email_body,
+                                                        )
+                                                        .await;
+                                                    info!(
+                                                        "Email sent to user with id {id} for url {}",
+                                                        payload.url
+                                                    );
+                                                    if let Err(err) = email_result {
+                                                        error!(%err, "Error occurred sending email to user");
+                                                    }
+                                                }
+                                                Ok(None) => {
+                                                    error!("User with id {} not found, cannot send email notification", user_id);
+                                                }
+                                                Err(err) => {
+                                                    error!(%err, "Error looking up user with id {} for email notification", user_id);
+                                                }
                                             }
                                         } else {
                                             info!(
