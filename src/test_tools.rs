@@ -30,7 +30,6 @@ use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use entity::accession::Model as AccessionModel;
 use entity::accessions_with_metadata::Model as AccessionsWithMetadataModel;
-use entity::collection_ar::Model as CollectionArModel;
 use entity::collection_en::Model as CollectionEnModel;
 use entity::dublin_metadata_subject_ar::Model as DublinMetadataSubjectArModel;
 use entity::dublin_metadata_subject_en::Model as DublinMetadataSubjectEnModel;
@@ -674,17 +673,6 @@ pub fn mock_one_collection() -> CollectionEnModel {
         id: 1,
         title: "Mock Collection".to_string(),
         description: Some("A mock collection for testing".to_string()),
-        is_public: true,
-    }
-}
-
-/// Creates a single mock Arabic collection for testing.
-#[allow(dead_code)]
-pub fn mock_one_collection_ar() -> CollectionArModel {
-    CollectionArModel {
-        id: 1,
-        title: "Arabic Mock Collection".to_string(),
-        description: Some("A mock collection in Arabic".to_string()),
         is_public: true,
     }
 }
