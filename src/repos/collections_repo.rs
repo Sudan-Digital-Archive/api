@@ -2,12 +2,16 @@
 //!
 //! This module provides functionality for creating, retrieving, updating, and deleting
 //! collection records with their associated subjects in both Arabic and English.
+//!
+//! Note: The JOIN operations to fetch subject IDs for collections are safe because
+//! the API validates that collections can have at most 200 subjects (see
+//! CreateCollectionRequest and UpdateCollectionRequest in src/models/request.rs).
+//! This prevents the JOIN from returning an absurd amount of data.
 
 use crate::models::common::MetadataLanguage;
 use async_trait::async_trait;
 use entity::collection_ar::ActiveModel as CollectionArActiveModel;
 use entity::collection_ar::Entity as CollectionAr;
-use entity::collection_ar::Model as CollectionArModel;
 use entity::collection_ar_subjects::ActiveModel as CollectionArSubjectsActiveModel;
 use entity::collection_ar_subjects::Entity as CollectionArSubjects;
 use entity::collection_en::ActiveModel as CollectionEnActiveModel;
@@ -20,6 +24,14 @@ use sea_orm::{
     PaginatorTrait, QueryFilter, TransactionTrait, TryIntoModel,
 };
 
+/// A collection with its associated subject IDs.
+/// This is returned from repository methods to provide complete collection data.
+#[derive(Debug, Clone)]
+pub struct CollectionWithSubjects {
+    pub collection: CollectionEnModel,
+    pub subject_ids: Vec<i32>,
+}
+
 /// Repository implementation for database operations on collections.
 #[derive(Debug, Clone, Default)]
 pub struct DBCollectionsRepo {
@@ -30,27 +42,29 @@ pub struct DBCollectionsRepo {
 #[async_trait]
 pub trait CollectionsRepo: Send + Sync {
     /// Lists English collections with pagination and optional filtering by visibility.
+    /// Returns collections with their associated subject IDs.
     async fn list_paginated_en(
         &self,
         page: u64,
         per_page: u64,
         is_public: Option<bool>,
-    ) -> Result<(Vec<CollectionEnModel>, u64), DbErr>;
+    ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr>;
 
     /// Lists Arabic collections with pagination and optional filtering by visibility.
+    /// Returns collections converted to English models with their associated subject IDs.
     async fn list_paginated_ar(
         &self,
         page: u64,
         per_page: u64,
         is_public: Option<bool>,
-    ) -> Result<(Vec<CollectionArModel>, u64), DbErr>;
+    ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr>;
 
     /// Retrieves a single collection by ID with its associated subjects.
     async fn get_one(
         &self,
         id: i32,
         lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr>;
+    ) -> Result<Option<CollectionWithSubjects>, DbErr>;
 
     /// Creates a new collection with associated subjects in a transaction.
     async fn create_one(
@@ -63,6 +77,7 @@ pub trait CollectionsRepo: Send + Sync {
     ) -> Result<i32, DbErr>;
 
     /// Updates an existing collection with new data and subjects in a transaction (idempotent PUT).
+    /// Returns the updated collection with its associated subject IDs.
     async fn update_one(
         &self,
         id: i32,
@@ -71,7 +86,7 @@ pub trait CollectionsRepo: Send + Sync {
         is_public: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr>;
+    ) -> Result<Option<CollectionWithSubjects>, DbErr>;
 
     /// Deletes a collection.
     ///
@@ -82,7 +97,7 @@ pub trait CollectionsRepo: Send + Sync {
         &self,
         id: i32,
         lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr>;
+    ) -> Result<Option<CollectionWithSubjects>, DbErr>;
 }
 
 #[async_trait]
@@ -92,14 +107,33 @@ impl CollectionsRepo for DBCollectionsRepo {
         page: u64,
         per_page: u64,
         is_public: Option<bool>,
-    ) -> Result<(Vec<CollectionEnModel>, u64), DbErr> {
+    ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         let mut query = CollectionEn::find();
         if let Some(public) = is_public {
             query = query.filter(entity::collection_en::Column::IsPublic.eq(public));
         }
         let collection_pages = query.paginate(&self.db_session, per_page);
         let num_pages = collection_pages.num_pages().await?;
-        Ok((collection_pages.fetch_page(page).await?, num_pages))
+        let collections = collection_pages.fetch_page(page).await?;
+
+        // Fetch subject IDs for each collection
+        let mut collections_with_subjects: Vec<CollectionWithSubjects> = Vec::new();
+        for collection in collections {
+            let subject_ids: Vec<i32> = CollectionEnSubjects::find()
+                .filter(entity::collection_en_subjects::Column::CollectionEnId.eq(collection.id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|link| link.subject_en_id)
+                .collect();
+
+            collections_with_subjects.push(CollectionWithSubjects {
+                collection,
+                subject_ids,
+            });
+        }
+
+        Ok((collections_with_subjects, num_pages))
     }
 
     async fn list_paginated_ar(
@@ -107,31 +141,95 @@ impl CollectionsRepo for DBCollectionsRepo {
         page: u64,
         per_page: u64,
         is_public: Option<bool>,
-    ) -> Result<(Vec<CollectionArModel>, u64), DbErr> {
+    ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         let mut query = CollectionAr::find();
         if let Some(public) = is_public {
             query = query.filter(entity::collection_ar::Column::IsPublic.eq(public));
         }
         let collection_pages = query.paginate(&self.db_session, per_page);
         let num_pages = collection_pages.num_pages().await?;
-        Ok((collection_pages.fetch_page(page).await?, num_pages))
+        let collections = collection_pages.fetch_page(page).await?;
+
+        // Fetch subject IDs for each collection and convert to English model
+        let mut collections_with_subjects: Vec<CollectionWithSubjects> = Vec::new();
+        for collection in collections {
+            let subject_ids: Vec<i32> = CollectionArSubjects::find()
+                .filter(entity::collection_ar_subjects::Column::CollectionArId.eq(collection.id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|link| link.subject_ar_id)
+                .collect();
+
+            // Convert Arabic model to English model
+            let en_collection = CollectionEnModel {
+                id: collection.id,
+                title: collection.title,
+                description: collection.description,
+                is_public: collection.is_public,
+            };
+
+            collections_with_subjects.push(CollectionWithSubjects {
+                collection: en_collection,
+                subject_ids,
+            });
+        }
+
+        Ok((collections_with_subjects, num_pages))
     }
 
     async fn get_one(
         &self,
         id: i32,
         lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr> {
+    ) -> Result<Option<CollectionWithSubjects>, DbErr> {
         match lang {
-            MetadataLanguage::English => CollectionEn::find_by_id(id).one(&self.db_session).await,
+            MetadataLanguage::English => {
+                let collection = CollectionEn::find_by_id(id).one(&self.db_session).await?;
+
+                if let Some(collection) = collection {
+                    let subject_ids: Vec<i32> = CollectionEnSubjects::find()
+                        .filter(entity::collection_en_subjects::Column::CollectionEnId.eq(id))
+                        .all(&self.db_session)
+                        .await?
+                        .into_iter()
+                        .map(|link| link.subject_en_id)
+                        .collect();
+
+                    Ok(Some(CollectionWithSubjects {
+                        collection,
+                        subject_ids,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
             MetadataLanguage::Arabic => {
                 let ar_model = CollectionAr::find_by_id(id).one(&self.db_session).await?;
-                Ok(ar_model.map(|ar| CollectionEnModel {
-                    id: ar.id,
-                    title: ar.title,
-                    description: ar.description,
-                    is_public: ar.is_public,
-                }))
+
+                if let Some(ar) = ar_model {
+                    let subject_ids: Vec<i32> = CollectionArSubjects::find()
+                        .filter(entity::collection_ar_subjects::Column::CollectionArId.eq(id))
+                        .all(&self.db_session)
+                        .await?
+                        .into_iter()
+                        .map(|link| link.subject_ar_id)
+                        .collect();
+
+                    let en_collection = CollectionEnModel {
+                        id: ar.id,
+                        title: ar.title,
+                        description: ar.description,
+                        is_public: ar.is_public,
+                    };
+
+                    Ok(Some(CollectionWithSubjects {
+                        collection: en_collection,
+                        subject_ids,
+                    }))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
@@ -211,7 +309,7 @@ impl CollectionsRepo for DBCollectionsRepo {
         is_public: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr> {
+    ) -> Result<Option<CollectionWithSubjects>, DbErr> {
         let txn = self.db_session.begin().await?;
 
         match lang {
@@ -249,7 +347,18 @@ impl CollectionsRepo for DBCollectionsRepo {
                 }
 
                 txn.commit().await?;
-                CollectionEn::find_by_id(id).one(&self.db_session).await
+
+                // Fetch the updated collection with subject IDs
+                let collection = CollectionEn::find_by_id(id).one(&self.db_session).await?;
+
+                if let Some(collection) = collection {
+                    Ok(Some(CollectionWithSubjects {
+                        collection,
+                        subject_ids,
+                    }))
+                } else {
+                    Ok(None)
+                }
             }
             MetadataLanguage::Arabic => {
                 let existing = CollectionAr::find_by_id(id).one(&self.db_session).await?;
@@ -285,13 +394,25 @@ impl CollectionsRepo for DBCollectionsRepo {
                 }
 
                 txn.commit().await?;
+
+                // Fetch the updated collection and convert to English model
                 let ar_model = CollectionAr::find_by_id(id).one(&self.db_session).await?;
-                Ok(ar_model.map(|ar| CollectionEnModel {
-                    id: ar.id,
-                    title: ar.title,
-                    description: ar.description,
-                    is_public: ar.is_public,
-                }))
+
+                if let Some(ar) = ar_model {
+                    let en_collection = CollectionEnModel {
+                        id: ar.id,
+                        title: ar.title,
+                        description: ar.description,
+                        is_public: ar.is_public,
+                    };
+
+                    Ok(Some(CollectionWithSubjects {
+                        collection: en_collection,
+                        subject_ids,
+                    }))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
@@ -300,37 +421,68 @@ impl CollectionsRepo for DBCollectionsRepo {
         &self,
         id: i32,
         lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr> {
+    ) -> Result<Option<CollectionWithSubjects>, DbErr> {
         match lang {
             MetadataLanguage::English => {
                 let collection = CollectionEn::find_by_id(id).one(&self.db_session).await?;
+
                 if collection.is_none() {
                     return Ok(None);
                 }
+
+                // Fetch subject IDs before deletion
+                let subject_ids: Vec<i32> = CollectionEnSubjects::find()
+                    .filter(entity::collection_en_subjects::Column::CollectionEnId.eq(id))
+                    .all(&self.db_session)
+                    .await?
+                    .into_iter()
+                    .map(|link| link.subject_en_id)
+                    .collect();
 
                 // The collection will be deleted with all its relationships
                 // cascading automatically due to ON DELETE CASCADE on the FK constraints.
                 CollectionEn::delete_by_id(id)
                     .exec(&self.db_session)
                     .await?;
-                Ok(collection)
+
+                Ok(Some(CollectionWithSubjects {
+                    collection: collection.unwrap(),
+                    subject_ids,
+                }))
             }
             MetadataLanguage::Arabic => {
                 let collection = CollectionAr::find_by_id(id).one(&self.db_session).await?;
+
                 if collection.is_none() {
                     return Ok(None);
                 }
+
+                // Fetch subject IDs before deletion
+                let subject_ids: Vec<i32> = CollectionArSubjects::find()
+                    .filter(entity::collection_ar_subjects::Column::CollectionArId.eq(id))
+                    .all(&self.db_session)
+                    .await?
+                    .into_iter()
+                    .map(|link| link.subject_ar_id)
+                    .collect();
+
+                let ar = collection.unwrap();
+                let en_collection = CollectionEnModel {
+                    id: ar.id,
+                    title: ar.title,
+                    description: ar.description,
+                    is_public: ar.is_public,
+                };
 
                 // The collection will be deleted with all its relationships
                 // cascading automatically due to ON DELETE CASCADE on the FK constraints.
                 CollectionAr::delete_by_id(id)
                     .exec(&self.db_session)
                     .await?;
-                Ok(collection.map(|ar| CollectionEnModel {
-                    id: ar.id,
-                    title: ar.title,
-                    description: ar.description,
-                    is_public: ar.is_public,
+
+                Ok(Some(CollectionWithSubjects {
+                    collection: en_collection,
+                    subject_ids,
                 }))
             }
         }

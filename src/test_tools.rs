@@ -15,7 +15,7 @@ use crate::models::response::CreateCrawlResponse;
 use crate::repos::accessions_repo::AccessionsRepo;
 use crate::repos::auth_repo::{ApiKeyUserInfo, AuthRepo};
 use crate::repos::browsertrix_repo::BrowsertrixRepo;
-use crate::repos::collections_repo::CollectionsRepo;
+use crate::repos::collections_repo::{CollectionWithSubjects, CollectionsRepo};
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::s3_repo::S3Repo;
 use crate::repos::subjects_repo::SubjectsRepo;
@@ -30,7 +30,6 @@ use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use entity::accession::Model as AccessionModel;
 use entity::accessions_with_metadata::Model as AccessionsWithMetadataModel;
-use entity::collection_ar::Model as CollectionArModel;
 use entity::collection_en::Model as CollectionEnModel;
 use entity::dublin_metadata_subject_ar::Model as DublinMetadataSubjectArModel;
 use entity::dublin_metadata_subject_en::Model as DublinMetadataSubjectEnModel;
@@ -176,7 +175,7 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         page: u64,
         per_page: u64,
         _is_public: Option<bool>,
-    ) -> Result<(Vec<CollectionEnModel>, u64), DbErr> {
+    ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         Ok(mock_paginated_collections(page, per_page))
     }
 
@@ -185,7 +184,7 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         page: u64,
         per_page: u64,
         _is_public: Option<bool>,
-    ) -> Result<(Vec<CollectionArModel>, u64), DbErr> {
+    ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         Ok(mock_paginated_collections_ar(page, per_page))
     }
 
@@ -193,8 +192,8 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         &self,
         _id: i32,
         _lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr> {
-        Ok(Some(mock_one_collection()))
+    ) -> Result<Option<CollectionWithSubjects>, DbErr> {
+        Ok(Some(mock_one_collection_with_subjects()))
     }
 
     async fn create_one(
@@ -216,16 +215,16 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         _is_public: bool,
         _subject_ids: Vec<i32>,
         _lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr> {
-        Ok(Some(mock_one_collection()))
+    ) -> Result<Option<CollectionWithSubjects>, DbErr> {
+        Ok(Some(mock_one_collection_with_subjects()))
     }
 
     async fn delete_one(
         &self,
         _id: i32,
         _lang: MetadataLanguage,
-    ) -> Result<Option<CollectionEnModel>, DbErr> {
-        Ok(Some(mock_one_collection()))
+    ) -> Result<Option<CollectionWithSubjects>, DbErr> {
+        Ok(Some(mock_one_collection_with_subjects()))
     }
 }
 
@@ -641,10 +640,10 @@ pub fn get_mock_jwt() -> String {
 }
 
 /// Creates a mock paginated collection of English collections.
-pub fn mock_paginated_collections(page: u64, per_page: u64) -> (Vec<CollectionEnModel>, u64) {
+pub fn mock_paginated_collections(page: u64, per_page: u64) -> (Vec<CollectionWithSubjects>, u64) {
     let total_items = 10u64;
     let num_pages = (total_items + per_page - 1) / per_page;
-    let items = vec![mock_one_collection()];
+    let items = vec![mock_one_collection_with_subjects()];
     // Return only items for the requested page
     if page >= num_pages {
         return (vec![], num_pages);
@@ -653,10 +652,14 @@ pub fn mock_paginated_collections(page: u64, per_page: u64) -> (Vec<CollectionEn
 }
 
 /// Creates a mock paginated collection of Arabic collections.
-pub fn mock_paginated_collections_ar(page: u64, per_page: u64) -> (Vec<CollectionArModel>, u64) {
+pub fn mock_paginated_collections_ar(
+    page: u64,
+    per_page: u64,
+) -> (Vec<CollectionWithSubjects>, u64) {
     let total_items = 10u64;
     let num_pages = (total_items + per_page - 1) / per_page;
-    let items = vec![mock_one_collection_ar()];
+    // Arabic collections return the same structure (CollectionWithSubjects uses CollectionEnModel)
+    let items = vec![mock_one_collection_with_subjects()];
     // Return only items for the requested page
     if page >= num_pages {
         return (vec![], num_pages);
@@ -674,12 +677,10 @@ pub fn mock_one_collection() -> CollectionEnModel {
     }
 }
 
-/// Creates a single mock Arabic collection for testing.
-pub fn mock_one_collection_ar() -> CollectionArModel {
-    CollectionArModel {
-        id: 1,
-        title: "Arabic Mock Collection".to_string(),
-        description: Some("A mock collection in Arabic".to_string()),
-        is_public: true,
+/// Creates a single mock collection with subjects for testing.
+pub fn mock_one_collection_with_subjects() -> CollectionWithSubjects {
+    CollectionWithSubjects {
+        collection: mock_one_collection(),
+        subject_ids: vec![1, 2, 3],
     }
 }

@@ -212,6 +212,7 @@ pub struct CollectionResponse {
     pub title: String,
     pub description: Option<String>,
     pub is_public: bool,
+    pub subject_ids: Vec<i32>,
 }
 
 /// Response for listing collections with pagination.
