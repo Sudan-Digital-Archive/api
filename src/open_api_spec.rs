@@ -2,9 +2,9 @@ use crate::models::request::{
     AccessionPagination, AccessionPaginationWithPrivate, AuthorizeRequest, CollectionLangParam,
     CollectionPagination, CollectionPaginationWithPrivate, CreateAccessionRequest,
     CreateAccessionRequestRaw, CreateCollectionRequest, CreateSubjectRequest, CreateUserRequest,
-    DeleteSubjectRequest, LoginRequest, RevokeApiKeyRequest, SubjectPagination,
+    DeleteSubjectRequest, LoginRequest, RevokeApiKeyRequest, SubjectLangParam, SubjectPagination,
     UpdateAccessionRequest, UpdateCollectionRequest, UpdateSubjectRequest, UpdateUserRequest,
-    UserPagination,SubjectLangParam,
+    UserPagination,
 };
 use crate::models::response::{
     CollectionResponse, CreateApiKeyResponse, GetOneAccessionResponse, ListAccessionsResponse,

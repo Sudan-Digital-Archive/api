@@ -304,7 +304,7 @@ pub struct CollectionPaginationWithPrivate {
     #[schema(default = 20, minimum = 1, maximum = 200)]
     pub per_page: u64,
     pub lang: MetadataLanguage,
-    pub is_public: Option<bool>,
+    pub is_private: Option<bool>,
 }
 
 impl Default for CollectionPaginationWithPrivate {
@@ -313,7 +313,7 @@ impl Default for CollectionPaginationWithPrivate {
             page: 0,
             per_page: 20,
             lang: MetadataLanguage::English,
-            is_public: None,
+            is_private: None,
         }
     }
 }
