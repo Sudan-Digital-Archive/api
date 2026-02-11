@@ -101,6 +101,17 @@ pub trait SubjectsRepo: Send + Sync {
         subject_id: i32,
         metadata_language: MetadataLanguage,
     ) -> Result<Option<()>, DbErr>;
+
+    /// Retrieves a single subject term by its ID.
+    ///
+    /// # Arguments
+    /// * `subject_id` - The ID of the subject to retrieve.
+    /// * `metadata_language` - Language of the subject to retrieve
+    async fn get_one(
+        &self,
+        subject_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<SubjectResponse>, DbErr>;
 }
 
 #[async_trait]
@@ -268,5 +279,33 @@ impl SubjectsRepo for DBSubjectsRepo {
         } else {
             Ok(None)
         }
+    }
+
+    async fn get_one(
+        &self,
+        subject_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<SubjectResponse>, DbErr> {
+        let result = match metadata_language {
+            MetadataLanguage::English => {
+                let subject = DublinMetadataSubjectEn::find_by_id(subject_id)
+                    .one(&self.db_session)
+                    .await?;
+                subject.map(|s| SubjectResponse {
+                    id: s.id,
+                    subject: s.subject,
+                })
+            }
+            MetadataLanguage::Arabic => {
+                let subject = DublinMetadataSubjectAr::find_by_id(subject_id)
+                    .one(&self.db_session)
+                    .await?;
+                subject.map(|s| SubjectResponse {
+                    id: s.id,
+                    subject: s.subject,
+                })
+            }
+        };
+        Ok(result)
     }
 }

@@ -362,3 +362,20 @@ impl Default for CollectionLangParam {
         }
     }
 }
+
+/// Query parameters for subject endpoints that require a language specification.
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct SubjectLangParam {
+    /// Language for the subject (english or arabic)
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for SubjectLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}

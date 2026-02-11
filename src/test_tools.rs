@@ -161,6 +161,18 @@ impl SubjectsRepo for InMemorySubjectsRepo {
     ) -> Result<bool, DbErr> {
         Ok(true)
     }
+
+    /// Returns a predefined subject response for testing.
+    async fn get_one(
+        &self,
+        subject_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<crate::models::response::SubjectResponse>, DbErr> {
+        Ok(Some(crate::models::response::SubjectResponse {
+            id: subject_id,
+            subject: "Mock Subject".to_string(),
+        }))
+    }
 }
 
 /// In-memory implementation of CollectionsRepo for testing.
