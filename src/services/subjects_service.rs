@@ -57,6 +57,30 @@ impl SubjectsService {
         }
     }
 
+    /// Retrieves a single subject by its ID.
+    ///
+    /// # Arguments
+    /// * `id` - The unique identifier of the subject
+    /// * `lang` - Language of the subject to retrieve (Arabic or English)
+    ///
+    /// # Returns
+    /// Returns a JSON response with the subject or an error response
+    pub async fn get_one(self, id: i32, lang: MetadataLanguage) -> Response {
+        info!("Getting subject with id {} and lang {:?}", id, lang);
+        let result = self.subjects_repo.get_one(id, lang).await;
+
+        match result {
+            Err(err) => {
+                error!(%err, "Error occurred retrieving subject");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
+            }
+            Ok(subject) => match subject {
+                Some(s) => Json(s).into_response(),
+                None => (StatusCode::NOT_FOUND, "Subject not found").into_response(),
+            },
+        }
+    }
+
     /// Lists paginated subjects with optional search filtering.
     ///
     /// # Arguments

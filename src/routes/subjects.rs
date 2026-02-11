@@ -9,7 +9,8 @@ use crate::app_factory::AppState;
 use crate::auth::{validate_at_least_contributor, validate_at_least_researcher};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::request::{
-    CreateSubjectRequest, DeleteSubjectRequest, SubjectPagination, UpdateSubjectRequest,
+    CreateSubjectRequest, DeleteSubjectRequest, SubjectLangParam, SubjectPagination,
+    UpdateSubjectRequest,
 };
 use crate::models::response::{ListSubjectsArResponse, ListSubjectsEnResponse, SubjectResponse};
 use ::entity::sea_orm_active_enums::Role;
@@ -27,6 +28,7 @@ pub fn get_subjects_routes() -> Router<AppState> {
         Router::new()
             .route("/", get(list_subjects))
             .route("/", post(create_subject))
+            .route("/{subject_id}", get(get_one_subject))
             .route("/{subject_id}", delete(delete_subject))
             .route("/{subject_id}", put(update_subject)),
     )
@@ -90,6 +92,27 @@ async fn list_subjects(
             pagination.0.query_term,
         )
         .await
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/metadata-subjects/{subject_id}",
+    tag = "Subjects",
+    params(
+        ("subject_id" = i32, Path, description = "Subject ID"),
+        SubjectLangParam
+    ),
+    responses(
+        (status = 200, description = "OK", body = SubjectResponse),
+        (status = 404, description = "Not found")
+    )
+)]
+async fn get_one_subject(
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+    Query(params): Query<SubjectLangParam>,
+) -> Response {
+    state.subjects_service.get_one(id, params.lang).await
 }
 
 #[utoipa::path(

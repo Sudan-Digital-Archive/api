@@ -97,7 +97,7 @@ async fn list_collections_private(
             pagination.0.lang,
             pagination.0.page,
             pagination.0.per_page,
-            pagination.0.is_public,
+            pagination.0.is_private,
         )
         .await
 }
@@ -303,7 +303,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/collections/private?page=0&per_page=1&lang=english&is_public=false")
+                    .uri("/api/v1/collections/private?page=0&per_page=1&lang=english&is_private=true")
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
                     .body(Body::empty())
                     .unwrap(),

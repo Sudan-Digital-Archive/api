@@ -304,7 +304,7 @@ pub struct CollectionPaginationWithPrivate {
     #[schema(default = 20, minimum = 1, maximum = 200)]
     pub per_page: u64,
     pub lang: MetadataLanguage,
-    pub is_public: Option<bool>,
+    pub is_private: Option<bool>,
 }
 
 impl Default for CollectionPaginationWithPrivate {
@@ -313,7 +313,7 @@ impl Default for CollectionPaginationWithPrivate {
             page: 0,
             per_page: 20,
             lang: MetadataLanguage::English,
-            is_public: None,
+            is_private: None,
         }
     }
 }
@@ -356,6 +356,23 @@ pub struct CollectionLangParam {
 }
 
 impl Default for CollectionLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}
+
+/// Query parameters for subject endpoints that require a language specification.
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct SubjectLangParam {
+    /// Language for the subject (english or arabic)
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for SubjectLangParam {
     fn default() -> Self {
         Self {
             lang: MetadataLanguage::English,

@@ -2,7 +2,7 @@ use crate::models::request::{
     AccessionPagination, AccessionPaginationWithPrivate, AuthorizeRequest, CollectionLangParam,
     CollectionPagination, CollectionPaginationWithPrivate, CreateAccessionRequest,
     CreateAccessionRequestRaw, CreateCollectionRequest, CreateSubjectRequest, CreateUserRequest,
-    DeleteSubjectRequest, LoginRequest, RevokeApiKeyRequest, SubjectPagination,
+    DeleteSubjectRequest, LoginRequest, RevokeApiKeyRequest, SubjectLangParam, SubjectPagination,
     UpdateAccessionRequest, UpdateCollectionRequest, UpdateSubjectRequest, UpdateUserRequest,
     UserPagination,
 };
@@ -13,7 +13,6 @@ use crate::models::response::{
 };
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::{Modify, OpenApi};
-
 struct SecurityAddon;
 
 impl Modify for SecurityAddon {
@@ -55,6 +54,7 @@ impl Modify for SecurityAddon {
         crate::routes::auth::delete_user,
         crate::routes::subjects::create_subject,
         crate::routes::subjects::list_subjects,
+        crate::routes::subjects::get_one_subject,
         crate::routes::subjects::delete_subject,
         crate::routes::subjects::update_subject,
         crate::routes::collections::list_collections,
@@ -80,6 +80,7 @@ impl Modify for SecurityAddon {
             UpdateSubjectRequest,
             DeleteSubjectRequest,
             SubjectPagination,
+            SubjectLangParam,
             SubjectResponse,
             ListSubjectsEnResponse,
             ListSubjectsArResponse,
