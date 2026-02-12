@@ -170,6 +170,9 @@ pub struct SubjectPagination {
     pub lang: MetadataLanguage,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
+    /// Filter subjects to only those present on accessions that have subjects in this collection
+    #[schema(example = 1)]
+    pub in_collection_id: Option<i32>,
 }
 
 impl Default for SubjectPagination {
@@ -179,6 +182,7 @@ impl Default for SubjectPagination {
             per_page: 20,
             lang: MetadataLanguage::English,
             query_term: None,
+            in_collection_id: None,
         }
     }
 }

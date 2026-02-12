@@ -127,6 +127,7 @@ impl SubjectsRepo for InMemorySubjectsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataSubjectArModel>, u64), DbErr> {
         Ok(mock_paginated_subjects_ar())
     }
@@ -137,6 +138,7 @@ impl SubjectsRepo for InMemorySubjectsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataSubjectEnModel>, u64), DbErr> {
         Ok(mock_paginated_subjects_en())
     }
