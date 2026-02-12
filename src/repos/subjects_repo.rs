@@ -6,6 +6,10 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateSubjectRequest, UpdateSubjectRequest};
 use crate::models::response::SubjectResponse;
+use ::entity::collection_ar_subjects::Entity as CollectionArSubjects;
+use ::entity::collection_en_subjects::Entity as CollectionEnSubjects;
+use ::entity::dublin_metadata_ar_subjects::Entity as DublinMetadataArSubjects;
+use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use ::entity::dublin_metadata_subject_ar::ActiveModel as DublinMetadataSubjectArActiveModel;
 use ::entity::dublin_metadata_subject_ar::Entity as DublinMetadataSubjectAr;
 use ::entity::dublin_metadata_subject_ar::Model as DublinMetadataSubjectArModel;
@@ -13,7 +17,10 @@ use ::entity::dublin_metadata_subject_en::ActiveModel as DublinMetadataSubjectEn
 use ::entity::dublin_metadata_subject_en::Entity as DublinMetadataSubjectEn;
 use ::entity::dublin_metadata_subject_en::Model as DublinMetadataSubjectEnModel;
 use async_trait::async_trait;
-use entity::{dublin_metadata_subject_ar, dublin_metadata_subject_en};
+use entity::{
+    collection_ar_subjects, collection_en_subjects, dublin_metadata_ar_subjects,
+    dublin_metadata_en_subjects, dublin_metadata_subject_ar, dublin_metadata_subject_en,
+};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{ExprTrait, Func};
 use sea_orm::{
@@ -49,11 +56,13 @@ pub trait SubjectsRepo: Send + Sync {
     /// * `page` - The page number to retrieve
     /// * `per_page` - Number of records per page
     /// * `query_term` - Optional text search term
+    /// * `collection_id` - Optional collection ID to filter subjects present on accessions in that collection
     async fn list_paginated_ar(
         &self,
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataSubjectArModel>, u64), DbErr>;
 
     /// Lists English subject terms with pagination and optional text search.
@@ -62,11 +71,13 @@ pub trait SubjectsRepo: Send + Sync {
     /// * `page` - The page number to retrieve
     /// * `per_page` - Number of records per page
     /// * `query_term` - Optional text search term
+    /// * `collection_id` - Optional collection ID to filter subjects present on accessions in that collection
     async fn list_paginated_en(
         &self,
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataSubjectEnModel>, u64), DbErr>;
 
     /// Verifies that all provided subject IDs exist in the database.
@@ -152,18 +163,71 @@ impl SubjectsRepo for DBSubjectsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataSubjectArModel>, u64), DbErr> {
-        let subject_pages;
+        // Build the base query
+        let mut query = DublinMetadataSubjectAr::find();
+
+        // If collection filter is provided, join with metadata subjects to filter
+        if let Some(coll_id) = collection_id {
+            // Get the subject IDs that are part of this collection
+            let collection_subjects: Vec<i32> = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|cs| cs.subject_ar_id)
+                .collect();
+
+            if collection_subjects.is_empty() {
+                // Collection has no subjects, return empty result
+                return Ok((Vec::new(), 0));
+            }
+
+            // Get metadata IDs that have any of the collection's subjects
+            let metadata_ids: Vec<i32> = DublinMetadataArSubjects::find()
+                .filter(dublin_metadata_ar_subjects::Column::SubjectId.is_in(collection_subjects))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|dms| dms.metadata_id)
+                .collect::<std::collections::HashSet<_>>() // Remove duplicates
+                .into_iter()
+                .collect();
+
+            if metadata_ids.is_empty() {
+                // No accessions have the collection's subjects, return empty result
+                return Ok((Vec::new(), 0));
+            }
+
+            // Get subject IDs that appear on those metadata records
+            let subject_ids: Vec<i32> = DublinMetadataArSubjects::find()
+                .filter(dublin_metadata_ar_subjects::Column::MetadataId.is_in(metadata_ids))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|dms| dms.subject_id)
+                .collect::<std::collections::HashSet<_>>() // Remove duplicates
+                .into_iter()
+                .collect();
+
+            if subject_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            // Filter subjects to only those IDs
+            query = query.filter(dublin_metadata_subject_ar::Column::Id.is_in(subject_ids));
+        }
+
+        // Add text search filter if provided
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(dublin_metadata_subject_ar::Column::Subject))
                 .like(&query_string);
-            subject_pages = DublinMetadataSubjectAr::find()
-                .filter(query_filter)
-                .paginate(&self.db_session, per_page);
-        } else {
-            subject_pages = DublinMetadataSubjectAr::find().paginate(&self.db_session, per_page);
+            query = query.filter(query_filter);
         }
+
+        let subject_pages = query.paginate(&self.db_session, per_page);
         let num_pages = subject_pages.num_pages().await?;
         Ok((subject_pages.fetch_page(page).await?, num_pages))
     }
@@ -173,18 +237,71 @@ impl SubjectsRepo for DBSubjectsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataSubjectEnModel>, u64), DbErr> {
-        let subject_pages;
+        // Build the base query
+        let mut query = DublinMetadataSubjectEn::find();
+
+        // If collection filter is provided, join with metadata subjects to filter
+        if let Some(coll_id) = collection_id {
+            // Get the subject IDs that are part of this collection
+            let collection_subjects: Vec<i32> = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|cs| cs.subject_en_id)
+                .collect();
+
+            if collection_subjects.is_empty() {
+                // Collection has no subjects, return empty result
+                return Ok((Vec::new(), 0));
+            }
+
+            // Get metadata IDs that have any of the collection's subjects
+            let metadata_ids: Vec<i32> = DublinMetadataEnSubjects::find()
+                .filter(dublin_metadata_en_subjects::Column::SubjectId.is_in(collection_subjects))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|dms| dms.metadata_id)
+                .collect::<std::collections::HashSet<_>>() // Remove duplicates
+                .into_iter()
+                .collect();
+
+            if metadata_ids.is_empty() {
+                // No accessions have the collection's subjects, return empty result
+                return Ok((Vec::new(), 0));
+            }
+
+            // Get subject IDs that appear on those metadata records
+            let subject_ids: Vec<i32> = DublinMetadataEnSubjects::find()
+                .filter(dublin_metadata_en_subjects::Column::MetadataId.is_in(metadata_ids))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|dms| dms.subject_id)
+                .collect::<std::collections::HashSet<_>>() // Remove duplicates
+                .into_iter()
+                .collect();
+
+            if subject_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            // Filter subjects to only those IDs
+            query = query.filter(dublin_metadata_subject_en::Column::Id.is_in(subject_ids));
+        }
+
+        // Add text search filter if provided
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(dublin_metadata_subject_en::Column::Subject))
                 .like(&query_string);
-            subject_pages = DublinMetadataSubjectEn::find()
-                .filter(query_filter)
-                .paginate(&self.db_session, per_page);
-        } else {
-            subject_pages = DublinMetadataSubjectEn::find().paginate(&self.db_session, per_page);
+            query = query.filter(query_filter);
         }
+
+        let subject_pages = query.paginate(&self.db_session, per_page);
         let num_pages = subject_pages.num_pages().await?;
         Ok((subject_pages.fetch_page(page).await?, num_pages))
     }

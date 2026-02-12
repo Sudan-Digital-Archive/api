@@ -88,6 +88,7 @@ impl SubjectsService {
     /// * `per_page` - Number of items per page
     /// * `metadata_language` - Language of subjects to retrieve (Arabic or English)
     /// * `query_term` - Optional search term to filter subjects
+    /// * `in_collection_id` - Optional collection ID to filter subjects to only those present on accessions in that collection
     ///
     /// # Returns
     /// Returns a JSON response containing paginated subjects or an error response
@@ -97,13 +98,14 @@ impl SubjectsService {
         per_page: u64,
         metadata_language: MetadataLanguage,
         query_term: Option<String>,
+        in_collection_id: Option<i32>,
     ) -> Response {
         info!("Getting page {page} of {metadata_language} subjects with per page {per_page}...");
         match metadata_language {
             MetadataLanguage::Arabic => {
                 match self
                     .subjects_repo
-                    .list_paginated_ar(page, per_page, query_term)
+                    .list_paginated_ar(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {
@@ -125,7 +127,7 @@ impl SubjectsService {
             MetadataLanguage::English => {
                 match self
                     .subjects_repo
-                    .list_paginated_en(page, per_page, query_term)
+                    .list_paginated_en(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {
