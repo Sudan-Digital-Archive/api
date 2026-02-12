@@ -22,12 +22,12 @@ use entity::{
     dublin_metadata_en_subjects, dublin_metadata_subject_ar, dublin_metadata_subject_en,
 };
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{ExprTrait, Func};
+use sea_orm::sea_query::{ExprTrait, Func, SelectStatement};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel,
-    PaginatorTrait,
+    PaginatorTrait, QuerySelect, QueryTrait, RelationTrait,
 };
-use sea_orm::{ColumnTrait, QueryFilter};
+use sea_orm::{ColumnTrait, JoinType, QueryFilter};
 
 /// Repository implementation for database operations on subjects.
 #[derive(Debug, Clone, Default)]
@@ -168,55 +168,47 @@ impl SubjectsRepo for DBSubjectsRepo {
         // Build the base query
         let mut query = DublinMetadataSubjectAr::find();
 
-        // If collection filter is provided, join with metadata subjects to filter
+        // If collection filter is provided, use subqueries to filter efficiently
         if let Some(coll_id) = collection_id {
-            // Get the subject IDs that are part of this collection
-            let collection_subjects: Vec<i32> = CollectionArSubjects::find()
+            // First, check if collection has any subjects with a count query
+            let collection_has_subjects = CollectionArSubjects::find()
                 .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|cs| cs.subject_ar_id)
-                .collect();
+                .count(&self.db_session)
+                .await?;
 
-            if collection_subjects.is_empty() {
-                // Collection has no subjects, return empty result
+            if collection_has_subjects == 0 {
                 return Ok((Vec::new(), 0));
             }
 
-            // Get metadata IDs that have any of the collection's subjects
-            let metadata_ids: Vec<i32> = DublinMetadataArSubjects::find()
-                .filter(dublin_metadata_ar_subjects::Column::SubjectId.is_in(collection_subjects))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|dms| dms.metadata_id)
-                .collect::<std::collections::HashSet<_>>() // Remove duplicates
-                .into_iter()
-                .collect();
+            // Build subquery: Get metadata IDs that have any of the collection's subjects
+            // SELECT DISTINCT metadata_id FROM dublin_metadata_ar_subjects
+            // WHERE subject_id IN (SELECT subject_ar_id FROM collection_ar_subjects WHERE collection_ar_id = $1)
+            let metadata_ids_subquery: SelectStatement = DublinMetadataArSubjects::find()
+                .select_only()
+                .column(dublin_metadata_ar_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_ar_subjects::Column::SubjectId.in_subquery(
+                        CollectionArSubjects::find()
+                            .select_only()
+                            .column(collection_ar_subjects::Column::SubjectArId)
+                            .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
 
-            if metadata_ids.is_empty() {
-                // No accessions have the collection's subjects, return empty result
-                return Ok((Vec::new(), 0));
-            }
-
-            // Get subject IDs that appear on those metadata records
-            let subject_ids: Vec<i32> = DublinMetadataArSubjects::find()
-                .filter(dublin_metadata_ar_subjects::Column::MetadataId.is_in(metadata_ids))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|dms| dms.subject_id)
-                .collect::<std::collections::HashSet<_>>() // Remove duplicates
-                .into_iter()
-                .collect();
-
-            if subject_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            // Filter subjects to only those IDs
-            query = query.filter(dublin_metadata_subject_ar::Column::Id.is_in(subject_ids));
+            // Join subjects with dublin_metadata_ar_subjects and filter by the subquery
+            query = query
+                .distinct()
+                .join(
+                    JoinType::InnerJoin,
+                    dublin_metadata_subject_ar::Relation::DublinMetadataArSubjects.def(),
+                )
+                .filter(
+                    dublin_metadata_ar_subjects::Column::MetadataId
+                        .in_subquery(metadata_ids_subquery),
+                );
         }
 
         // Add text search filter if provided
@@ -242,55 +234,47 @@ impl SubjectsRepo for DBSubjectsRepo {
         // Build the base query
         let mut query = DublinMetadataSubjectEn::find();
 
-        // If collection filter is provided, join with metadata subjects to filter
+        // If collection filter is provided, use subqueries to filter efficiently
         if let Some(coll_id) = collection_id {
-            // Get the subject IDs that are part of this collection
-            let collection_subjects: Vec<i32> = CollectionEnSubjects::find()
+            // First, check if collection has any subjects with a count query
+            let collection_has_subjects = CollectionEnSubjects::find()
                 .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|cs| cs.subject_en_id)
-                .collect();
+                .count(&self.db_session)
+                .await?;
 
-            if collection_subjects.is_empty() {
-                // Collection has no subjects, return empty result
+            if collection_has_subjects == 0 {
                 return Ok((Vec::new(), 0));
             }
 
-            // Get metadata IDs that have any of the collection's subjects
-            let metadata_ids: Vec<i32> = DublinMetadataEnSubjects::find()
-                .filter(dublin_metadata_en_subjects::Column::SubjectId.is_in(collection_subjects))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|dms| dms.metadata_id)
-                .collect::<std::collections::HashSet<_>>() // Remove duplicates
-                .into_iter()
-                .collect();
+            // Build subquery: Get metadata IDs that have any of the collection's subjects
+            // SELECT DISTINCT metadata_id FROM dublin_metadata_en_subjects
+            // WHERE subject_id IN (SELECT subject_en_id FROM collection_en_subjects WHERE collection_en_id = $1)
+            let metadata_ids_subquery: SelectStatement = DublinMetadataEnSubjects::find()
+                .select_only()
+                .column(dublin_metadata_en_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_en_subjects::Column::SubjectId.in_subquery(
+                        CollectionEnSubjects::find()
+                            .select_only()
+                            .column(collection_en_subjects::Column::SubjectEnId)
+                            .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
 
-            if metadata_ids.is_empty() {
-                // No accessions have the collection's subjects, return empty result
-                return Ok((Vec::new(), 0));
-            }
-
-            // Get subject IDs that appear on those metadata records
-            let subject_ids: Vec<i32> = DublinMetadataEnSubjects::find()
-                .filter(dublin_metadata_en_subjects::Column::MetadataId.is_in(metadata_ids))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|dms| dms.subject_id)
-                .collect::<std::collections::HashSet<_>>() // Remove duplicates
-                .into_iter()
-                .collect();
-
-            if subject_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            // Filter subjects to only those IDs
-            query = query.filter(dublin_metadata_subject_en::Column::Id.is_in(subject_ids));
+            // Join subjects with dublin_metadata_en_subjects and filter by the subquery
+            query = query
+                .distinct()
+                .join(
+                    JoinType::InnerJoin,
+                    dublin_metadata_subject_en::Relation::DublinMetadataEnSubjects.def(),
+                )
+                .filter(
+                    dublin_metadata_en_subjects::Column::MetadataId
+                        .in_subquery(metadata_ids_subquery),
+                );
         }
 
         // Add text search filter if provided
