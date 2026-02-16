@@ -23,7 +23,7 @@ use crate::services::auth_service::AuthService;
 use crate::services::collections_service::CollectionsService;
 use crate::services::subjects_service::SubjectsService;
 use reqwest::Client;
-use sea_orm::Database;
+use sea_orm::{ConnectOptions, Database};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -34,7 +34,9 @@ use tracing::info;
 async fn main() {
     let app_config = build_app_config();
     let dolly_the_app_config = app_config.clone();
-    let db_session = Database::connect(app_config.postgres_url)
+    let mut opt = ConnectOptions::new(app_config.postgres_url);
+    opt.sqlx_logging(!app_config.disable_sql_logging);
+    let db_session = Database::connect(opt)
         .await
         .expect("Could not connect to db");
     let accessions_repo = DBAccessionsRepo {

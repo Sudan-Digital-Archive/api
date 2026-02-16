@@ -39,6 +39,8 @@ pub struct AppConfig {
     pub s3_operation_attempt_timeout: u64,
     pub s3_connect_timeout: u64,
     pub api_prefix: String,
+    /// Disable SQL query logging from sea-orm/sqlx (verbose, defaults to true)
+    pub disable_sql_logging: bool,
 }
 
 /// Builds application configuration from environment variables
@@ -102,6 +104,10 @@ pub fn build_app_config() -> AppConfig {
         .parse()
         .expect("S3_CONNECT_TIMEOUT should be a number");
     let api_prefix = env::var("API_PREFIX").unwrap_or("".to_string());
+    let disable_sql_logging = env::var("DISABLE_SQL_LOGGING")
+        .unwrap_or("true".to_string())
+        .parse()
+        .expect("DISABLE_SQL_LOGGING should be true or false");
     AppConfig {
         archive_sender_email,
         browsertrix,
@@ -121,6 +127,7 @@ pub fn build_app_config() -> AppConfig {
         s3_operation_attempt_timeout,
         s3_connect_timeout,
         api_prefix,
+        disable_sql_logging,
     }
 }
 
