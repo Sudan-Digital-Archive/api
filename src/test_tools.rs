@@ -14,7 +14,7 @@ use crate::models::request::{
 use crate::models::response::CreateCrawlResponse;
 use crate::repos::accessions_repo::AccessionsRepo;
 use crate::repos::auth_repo::{ApiKeyUserInfo, AuthRepo};
-use crate::repos::browsertrix_repo::BrowsertrixRepo;
+use crate::repos::browsertrix_repo::{BrowsertrixError, BrowsertrixRepo};
 use crate::repos::collections_repo::{CollectionWithSubjects, CollectionsRepo};
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::s3_repo::S3Repo;
@@ -388,24 +388,24 @@ impl BrowsertrixRepo for InMemoryBrowsertrixRepo {
     }
 
     /// Returns a fixed mock URL for WACZ files.
-    async fn get_wacz_url(&self, _job_run_id: &str) -> Result<String, Error> {
+    async fn get_wacz_url(&self, _job_run_id: &str) -> Result<String, BrowsertrixError> {
         Ok("my url".to_owned())
     }
 
     /// Returns a mock stream for WACZ file content.
-    async fn download_wacz_stream(&self, _crawl_id: &str) -> Result<Response, Error> {
+    async fn download_wacz_stream(&self, _crawl_id: &str) -> Result<Response, BrowsertrixError> {
         Ok(Response::from(http::Response::new("{}")))
     }
 
     /// Returns a mock response for any request.
-    async fn make_request(&self, _req: RequestBuilder) -> Result<Response, Error> {
+    async fn make_request(&self, _req: RequestBuilder) -> Result<Response, BrowsertrixError> {
         Ok(reqwest::Response::from(http::Response::new(
             "mock test data",
         )))
     }
 
     /// Returns a fixed authentication token.
-    async fn authenticate(&self) -> Result<String, Error> {
+    async fn authenticate(&self) -> Result<String, BrowsertrixError> {
         Ok("test_token".to_string())
     }
 
@@ -418,7 +418,7 @@ impl BrowsertrixRepo for InMemoryBrowsertrixRepo {
     async fn create_crawl(
         &self,
         _create_crawl_request: CreateCrawlRequest,
-    ) -> Result<CreateCrawlResponse, Error> {
+    ) -> Result<CreateCrawlResponse, BrowsertrixError> {
         Ok(CreateCrawlResponse {
             id: Uuid::new_v4(),
             run_now_job: "test_job_123".to_string(),
@@ -426,7 +426,7 @@ impl BrowsertrixRepo for InMemoryBrowsertrixRepo {
     }
 
     /// Returns a fixed "complete" status for any crawl.
-    async fn get_crawl_status(&self, _crawl_id: Uuid) -> Result<String, Error> {
+    async fn get_crawl_status(&self, _crawl_id: Uuid) -> Result<String, BrowsertrixError> {
         Ok("complete".to_owned())
     }
 }
