@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 /// Error type for Browsertrix API operations.
@@ -165,14 +165,20 @@ impl BrowsertrixRepo for HTTPBrowsertrixRepo {
             BrowsertrixError::RequestError(format!("Failed to parse WACZ URL response: {}", e))
         })?;
 
+        // Extract the first WACZ file URL from the response
+        // Resources are WACZ files produced by a completed Browsertrix crawl.
+        // A crawl can produce multiple WACZ files, but most crawls produce just one.
+        // We take the first one as it's the main archive.
         let wacz_url = wacz_response
             .resources
             .first()
             .map(|r| r.path.clone())
             .ok_or_else(|| {
-                BrowsertrixError::RequestError(
-                    "No WACZ resources found in Browsertrix response".to_string(),
-                )
+                error!("No WACZ resources found in Browsertrix response");
+                BrowsertrixError::ApiError {
+                    status: 200,
+                    message: "No WACZ resources found in Browsertrix response".to_string(),
+                }
             })?;
 
         Ok(wacz_url)
@@ -312,5 +318,35 @@ impl BrowsertrixRepo for HTTPBrowsertrixRepo {
         }
 
         Ok(response)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_error_summary_truncates_long_body() {
+        let long_body = "a".repeat(500);
+        let result = extract_error_summary_body(&long_body);
+        assert_eq!(result.len(), 203); // 200 chars + "..."
+        assert!(result.ends_with("..."));
+    }
+
+    #[test]
+    fn test_extract_error_summary_no_truncation_for_short_body() {
+        let short_body = "Short error message";
+        let result = extract_error_summary_body(short_body);
+        assert_eq!(result, short_body);
+        assert!(!result.ends_with("..."));
+    }
+
+    fn extract_error_summary_body(body: &str) -> String {
+        let truncated: String = body.chars().take(200).collect();
+        if truncated.len() < body.len() {
+            format!("{}...", truncated)
+        } else {
+            truncated
+        }
     }
 }
