@@ -11,6 +11,8 @@ use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 use chrono::{Duration, NaiveDateTime, Utc};
 use entity::{api_key, archive_user, session};
 use rand::Rng;
+use sea_orm::prelude::Expr;
+use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::{ActiveModelTrait, ActiveValue};
 use sea_orm::{
     ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
@@ -495,18 +497,23 @@ impl AuthRepo for DBAuthRepo {
         per_page: u64,
         email_filter: Option<String>,
     ) -> Result<(Vec<ArchiveUserModel>, u64), DbErr> {
-        let mut query = ArchiveUser::find();
+        // Build base query
+        let mut count_query = ArchiveUser::find();
+        let mut fetch_query = ArchiveUser::find();
 
-        // Apply email filter if provided
-        if let Some(filter) = email_filter {
-            query = query.filter(archive_user::Column::Email.contains(filter));
+        // Apply email filter if provided (case-insensitive using ILIKE)
+        if let Some(ref filter) = email_filter {
+            let filter_expr = Expr::expr(archive_user::Column::Email.into_expr()).ilike(filter);
+            count_query = count_query.filter(filter_expr.clone());
+            fetch_query = fetch_query.filter(filter_expr);
         }
 
         // Get total count for pagination
-        let total_count = query.clone().count(&self.db_session).await?;
-        let num_pages = (total_count + per_page - 1).div_ceil(per_page);
+        let total_count = count_query.count(&self.db_session).await?;
+        let num_pages = total_count.div_ceil(per_page).max(1);
+
         // Fetch the page
-        let users = query
+        let users = fetch_query
             .order_by_asc(archive_user::Column::Email)
             .offset(page * per_page)
             .limit(per_page)
