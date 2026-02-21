@@ -499,7 +499,7 @@ impl AuthRepo for DBAuthRepo {
     ) -> Result<(Vec<ArchiveUserModel>, u64), DbErr> {
         let filter_expr = email
             .as_ref()
-            .map(|e| Expr::expr(archive_user::Column::Email.into_expr()).ilike(e));
+            .map(|e| Expr::expr(archive_user::Column::Email.into_expr()).ilike(format!("%{}%", e)));
 
         let user_pages = if let Some(filter) = filter_expr {
             ArchiveUser::find()
