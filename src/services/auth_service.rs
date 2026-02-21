@@ -240,11 +240,7 @@ impl AuthService {
     pub async fn list_users(&self, pagination: UserPagination) -> Result<ListUsersResponse, DbErr> {
         let (users, num_pages) = self
             .auth_repo
-            .list_users(
-                pagination.page,
-                pagination.per_page,
-                pagination.email_filter,
-            )
+            .list_users(pagination.page, pagination.per_page, pagination.email)
             .await?;
 
         let user_responses: Vec<UserResponse> = users.into_iter().map(UserResponse::from).collect();

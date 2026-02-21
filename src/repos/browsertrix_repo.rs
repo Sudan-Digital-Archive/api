@@ -323,7 +323,6 @@ impl BrowsertrixRepo for HTTPBrowsertrixRepo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_extract_error_summary_truncates_long_body() {
