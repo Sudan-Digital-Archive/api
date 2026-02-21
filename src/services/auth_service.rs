@@ -243,7 +243,7 @@ impl AuthService {
             .list_users(
                 pagination.page,
                 pagination.per_page,
-                pagination.email_filter,
+                pagination.email,
             )
             .await?;
 

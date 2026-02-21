@@ -15,8 +15,8 @@ use sea_orm::prelude::Expr;
 use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::{ActiveModelTrait, ActiveValue};
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, TransactionTrait,
+    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter,
+    TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -495,30 +495,22 @@ impl AuthRepo for DBAuthRepo {
         &self,
         page: u64,
         per_page: u64,
-        email_filter: Option<String>,
+        email: Option<String>,
     ) -> Result<(Vec<ArchiveUserModel>, u64), DbErr> {
-        // Build base query
-        let mut count_query = ArchiveUser::find();
-        let mut fetch_query = ArchiveUser::find();
+        let filter_expr = email.as_ref().map(|e| {
+            Expr::expr(archive_user::Column::Email.into_expr()).ilike(e)
+        });
 
-        // Apply email filter if provided (case-insensitive using ILIKE)
-        if let Some(ref filter) = email_filter {
-            let filter_expr = Expr::expr(archive_user::Column::Email.into_expr()).ilike(filter);
-            count_query = count_query.filter(filter_expr.clone());
-            fetch_query = fetch_query.filter(filter_expr);
-        }
+        let user_pages = if let Some(filter) = filter_expr {
+            ArchiveUser::find()
+                .filter(filter)
+                .paginate(&self.db_session, per_page)
+        } else {
+            ArchiveUser::find().paginate(&self.db_session, per_page)
+        };
 
-        // Get total count for pagination
-        let total_count = count_query.count(&self.db_session).await?;
-        let num_pages = total_count.div_ceil(per_page).max(1);
-
-        // Fetch the page
-        let users = fetch_query
-            .order_by_asc(archive_user::Column::Email)
-            .offset(page * per_page)
-            .limit(per_page)
-            .all(&self.db_session)
-            .await?;
+        let num_pages = user_pages.num_pages().await?;
+        let users = user_pages.fetch_page(page).await?;
 
         Ok((users, num_pages))
     }

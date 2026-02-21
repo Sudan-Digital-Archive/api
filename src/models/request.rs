@@ -255,8 +255,7 @@ pub struct UserPagination {
     #[schema(default = 20, minimum = 1, maximum = 200)]
     pub per_page: u64,
     #[validate(length(min = 1, max = 500))]
-    #[serde(rename = "email")]
-    pub email_filter: Option<String>,
+    pub email: Option<String>,
 }
 
 impl Default for UserPagination {
@@ -264,7 +263,7 @@ impl Default for UserPagination {
         Self {
             page: 0,
             per_page: 20,
-            email_filter: None,
+            email: None,
         }
     }
 }
