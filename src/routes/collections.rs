@@ -58,7 +58,7 @@ async fn list_collections(
             pagination.0.lang,
             pagination.0.page,
             pagination.0.per_page,
-            Some(true),
+            Some(false),
         )
         .await
 }
@@ -154,7 +154,7 @@ async fn create_collection(
         .create_one(
             payload.title,
             payload.description,
-            payload.is_public,
+            payload.is_private,
             payload.subject_ids,
             payload.lang,
         )
@@ -195,7 +195,7 @@ async fn update_collection(
             id,
             payload.title,
             payload.description,
-            payload.is_public,
+            payload.is_private,
             payload.subject_ids,
             payload.lang,
         )
@@ -372,7 +372,7 @@ mod tests {
                             "lang": "english",
                             "title": "Test Collection",
                             "description": "A test collection",
-                            "is_public": true,
+                            "is_private": false,
                             "subject_ids": [1, 2]
                         }))
                         .unwrap(),
@@ -402,7 +402,7 @@ mod tests {
                             "lang": "english",
                             "title": "Updated Collection",
                             "description": "An updated collection",
-                            "is_public": false,
+                            "is_private": true,
                             "subject_ids": [3]
                         }))
                         .unwrap(),
@@ -430,7 +430,7 @@ mod tests {
                             "lang": "english",
                             "title": "Updated Collection",
                             "description": "An updated collection",
-                            "is_public": false,
+                            "is_private": true,
                             "subject_ids": [3]
                         }))
                         .unwrap(),

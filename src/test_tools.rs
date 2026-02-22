@@ -188,7 +188,7 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         &self,
         page: u64,
         per_page: u64,
-        _is_public: Option<bool>,
+        _is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         Ok(mock_paginated_collections(page, per_page))
     }
@@ -197,7 +197,7 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         &self,
         page: u64,
         per_page: u64,
-        _is_public: Option<bool>,
+        _is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         Ok(mock_paginated_collections_ar(page, per_page))
     }
@@ -214,7 +214,7 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         &self,
         _title: String,
         _description: Option<String>,
-        _is_public: bool,
+        _is_private: bool,
         _subject_ids: Vec<i32>,
         _lang: MetadataLanguage,
     ) -> Result<i32, DbErr> {
@@ -226,7 +226,7 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         _id: i32,
         _title: String,
         _description: Option<String>,
-        _is_public: bool,
+        _is_private: bool,
         _subject_ids: Vec<i32>,
         _lang: MetadataLanguage,
     ) -> Result<Option<CollectionWithSubjects>, DbErr> {
@@ -687,7 +687,7 @@ pub fn mock_one_collection() -> CollectionEnModel {
         id: 1,
         title: "Mock Collection".to_string(),
         description: Some("A mock collection for testing".to_string()),
-        is_public: true,
+        is_private: false,
     }
 }
 

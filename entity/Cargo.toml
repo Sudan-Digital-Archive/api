@@ -3,8 +3,9 @@ name = "entity"
 version = "0.1.0"
 edition = "2021"
 license = "CC0-1.0" 
+workspace = ".."
 
 [dependencies]
-sea-orm = { version = "1.1.0" }
-serde = { version = "1.0.216", features = ["derive"] }
-utoipa = { version = "5.4.0", features = ["axum_extras", "chrono", "uuid"] }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+utoipa = { workspace = true }

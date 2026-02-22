@@ -47,7 +47,7 @@ pub trait CollectionsRepo: Send + Sync {
         &self,
         page: u64,
         per_page: u64,
-        is_public: Option<bool>,
+        is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr>;
 
     /// Lists Arabic collections with pagination and optional filtering by visibility.
@@ -56,7 +56,7 @@ pub trait CollectionsRepo: Send + Sync {
         &self,
         page: u64,
         per_page: u64,
-        is_public: Option<bool>,
+        is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr>;
 
     /// Retrieves a single collection by ID with its associated subjects.
@@ -71,7 +71,7 @@ pub trait CollectionsRepo: Send + Sync {
         &self,
         title: String,
         description: Option<String>,
-        is_public: bool,
+        is_private: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
     ) -> Result<i32, DbErr>;
@@ -83,7 +83,7 @@ pub trait CollectionsRepo: Send + Sync {
         id: i32,
         title: String,
         description: Option<String>,
-        is_public: bool,
+        is_private: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
     ) -> Result<Option<CollectionWithSubjects>, DbErr>;
@@ -106,11 +106,11 @@ impl CollectionsRepo for DBCollectionsRepo {
         &self,
         page: u64,
         per_page: u64,
-        is_public: Option<bool>,
+        is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         let mut query = CollectionEn::find();
-        if let Some(public) = is_public {
-            query = query.filter(entity::collection_en::Column::IsPublic.eq(public));
+        if let Some(private) = is_private {
+            query = query.filter(entity::collection_en::Column::IsPrivate.eq(private));
         }
         let collection_pages = query.paginate(&self.db_session, per_page);
         let num_pages = collection_pages.num_pages().await?;
@@ -140,11 +140,11 @@ impl CollectionsRepo for DBCollectionsRepo {
         &self,
         page: u64,
         per_page: u64,
-        is_public: Option<bool>,
+        is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
         let mut query = CollectionAr::find();
-        if let Some(public) = is_public {
-            query = query.filter(entity::collection_ar::Column::IsPublic.eq(public));
+        if let Some(private) = is_private {
+            query = query.filter(entity::collection_ar::Column::IsPrivate.eq(private));
         }
         let collection_pages = query.paginate(&self.db_session, per_page);
         let num_pages = collection_pages.num_pages().await?;
@@ -166,7 +166,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                 id: collection.id,
                 title: collection.title,
                 description: collection.description,
-                is_public: collection.is_public,
+                is_private: collection.is_private,
             };
 
             collections_with_subjects.push(CollectionWithSubjects {
@@ -220,7 +220,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                         id: ar.id,
                         title: ar.title,
                         description: ar.description,
-                        is_public: ar.is_public,
+                        is_private: ar.is_private,
                     };
 
                     Ok(Some(CollectionWithSubjects {
@@ -238,7 +238,7 @@ impl CollectionsRepo for DBCollectionsRepo {
         &self,
         title: String,
         description: Option<String>,
-        is_public: bool,
+        is_private: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
     ) -> Result<i32, DbErr> {
@@ -250,7 +250,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                     id: Default::default(),
                     title: ActiveValue::Set(title),
                     description: ActiveValue::Set(description),
-                    is_public: ActiveValue::Set(is_public),
+                    is_private: ActiveValue::Set(is_private),
                 };
                 let inserted = collection.save(&txn).await?;
                 let id = inserted.try_into_model()?.id;
@@ -275,7 +275,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                     id: Default::default(),
                     title: ActiveValue::Set(title),
                     description: ActiveValue::Set(description),
-                    is_public: ActiveValue::Set(is_public),
+                    is_private: ActiveValue::Set(is_private),
                 };
                 let inserted = collection.save(&txn).await?;
                 let id = inserted.try_into_model()?.id;
@@ -306,7 +306,7 @@ impl CollectionsRepo for DBCollectionsRepo {
         id: i32,
         title: String,
         description: Option<String>,
-        is_public: bool,
+        is_private: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
     ) -> Result<Option<CollectionWithSubjects>, DbErr> {
@@ -322,7 +322,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                 let mut collection: CollectionEnActiveModel = existing.unwrap().into();
                 collection.title = ActiveValue::Set(title);
                 collection.description = ActiveValue::Set(description);
-                collection.is_public = ActiveValue::Set(is_public);
+                collection.is_private = ActiveValue::Set(is_private);
                 collection.update(&txn).await?;
 
                 // Delete existing subject relationships
@@ -369,7 +369,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                 let mut collection: CollectionArActiveModel = existing.unwrap().into();
                 collection.title = ActiveValue::Set(title);
                 collection.description = ActiveValue::Set(description);
-                collection.is_public = ActiveValue::Set(is_public);
+                collection.is_private = ActiveValue::Set(is_private);
                 collection.update(&txn).await?;
 
                 // Delete existing subject relationships
@@ -403,7 +403,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                         id: ar.id,
                         title: ar.title,
                         description: ar.description,
-                        is_public: ar.is_public,
+                        is_private: ar.is_private,
                     };
 
                     Ok(Some(CollectionWithSubjects {
@@ -471,7 +471,7 @@ impl CollectionsRepo for DBCollectionsRepo {
                     id: ar.id,
                     title: ar.title,
                     description: ar.description,
-                    is_public: ar.is_public,
+                    is_private: ar.is_private,
                 };
 
                 // The collection will be deleted with all its relationships

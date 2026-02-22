@@ -211,7 +211,7 @@ pub struct CollectionResponse {
     pub id: i32,
     pub title: String,
     pub description: Option<String>,
-    pub is_public: bool,
+    pub is_private: bool,
     pub subject_ids: Vec<i32>,
 }
 

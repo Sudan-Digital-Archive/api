@@ -330,7 +330,7 @@ pub struct CreateCollectionRequest {
     pub title: String,
     #[validate(length(min = 1, max = 2000))]
     pub description: Option<String>,
-    pub is_public: bool,
+    pub is_private: bool,
     #[validate(length(min = 1, max = 200))]
     #[schema(example = json!([1, 2, 3]))]
     pub subject_ids: Vec<i32>,
@@ -344,7 +344,7 @@ pub struct UpdateCollectionRequest {
     pub title: String,
     #[validate(length(min = 1, max = 2000))]
     pub description: Option<String>,
-    pub is_public: bool,
+    pub is_private: bool,
     #[validate(length(min = 1, max = 200))]
     #[schema(example = json!([1, 2, 3]))]
     pub subject_ids: Vec<i32>,

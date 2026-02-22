@@ -11,8 +11,8 @@ This file contains guidelines for agentic coding agents working on this Rust/Axu
 
 ### Build/Lint/Test Commands
 ```shell
-# Check compilation
-cargo check
+# Check all workspace crates compile
+cargo check --workspace
 
 # Run all tests (requires JWT_SECRET)
 export JWT_SECRET="test" && cargo test
@@ -28,9 +28,6 @@ cargo fmt -- --check
 
 # Apply formatting
 cargo fmt
-
-# Build application
-cargo build --verbose
 ```
 
 ### Database Operations
