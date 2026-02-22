@@ -11,6 +11,7 @@ mod m20251111_214709_add_api_keys;
 mod m20260105_012142_optional_browsertrix_fields_in_accessions;
 mod m20260111_121608_add_contributor_role;
 mod m20260206_154024_add_collections_table;
+mod m20260222_143347_rename_is_public_to_is_private;
 
 pub struct Migrator;
 
@@ -30,6 +31,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260105_012142_optional_browsertrix_fields_in_accessions::Migration),
             Box::new(m20260111_121608_add_contributor_role::Migration),
             Box::new(m20260206_154024_add_collections_table::Migration),
+            Box::new(m20260222_143347_rename_is_public_to_is_private::Migration),
         ]
     }
 }
