@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 license = "CC0-1.0" 
+workspace = ".."
 
 [lib]
 name = "migration"
@@ -11,5 +12,5 @@ path = "src/lib.rs"
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
-sea-orm-migration = {version="1.1.0", features=[ "runtime-tokio-native-tls", "sqlx-postgres"]}
+sea-orm-migration = { workspace = true }
 

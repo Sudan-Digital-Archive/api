@@ -28,7 +28,7 @@ impl CollectionsService {
     /// * `lang` - The language (English or Arabic)
     /// * `page` - Page number (0-based)
     /// * `per_page` - Items per page
-    /// * `is_public` - Optional filter for public/private collections
+    /// * `is_private` - Optional filter for private collections
     ///
     /// # Returns
     /// JSON response containing paginated collections or an error response
@@ -37,19 +37,19 @@ impl CollectionsService {
         lang: MetadataLanguage,
         page: u64,
         per_page: u64,
-        is_public: Option<bool>,
+        is_private: Option<bool>,
     ) -> Response {
         info!("Getting page {} of collections with lang {:?}", page, lang);
 
         let result = match lang {
             MetadataLanguage::English => {
                 self.collections_repo
-                    .list_paginated_en(page, per_page, is_public)
+                    .list_paginated_en(page, per_page, is_private)
                     .await
             }
             MetadataLanguage::Arabic => {
                 self.collections_repo
-                    .list_paginated_ar(page, per_page, is_public)
+                    .list_paginated_ar(page, per_page, is_private)
                     .await
             }
         };
@@ -103,7 +103,7 @@ impl CollectionsService {
     /// # Arguments
     /// * `title` - Collection title
     /// * `description` - Optional collection description
-    /// * `is_public` - Whether the collection is publicly visible
+    /// * `is_private` - Whether the collection is private
     /// * `subject_ids` - List of subject IDs to associate
     /// * `lang` - The language (English or Arabic)
     ///
@@ -113,7 +113,7 @@ impl CollectionsService {
         self,
         title: String,
         description: Option<String>,
-        is_public: bool,
+        is_private: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
     ) -> Response {
@@ -142,7 +142,7 @@ impl CollectionsService {
 
         let result = self
             .collections_repo
-            .create_one(title, description, is_public, subject_ids, lang)
+            .create_one(title, description, is_private, subject_ids, lang)
             .await;
 
         match result {
@@ -168,7 +168,7 @@ impl CollectionsService {
     /// * `id` - The unique identifier of the collection
     /// * `title` - New collection title
     /// * `description` - New optional description
-    /// * `is_public` - New visibility status
+    /// * `is_private` - New privacy status
     /// * `subject_ids` - New list of subject IDs (replaces existing)
     /// * `lang` - The language (English or Arabic)
     ///
@@ -179,7 +179,7 @@ impl CollectionsService {
         id: i32,
         title: String,
         description: Option<String>,
-        is_public: bool,
+        is_private: bool,
         subject_ids: Vec<i32>,
         lang: MetadataLanguage,
     ) -> Response {
@@ -205,7 +205,7 @@ impl CollectionsService {
 
         let result = self
             .collections_repo
-            .update_one(id, title, description, is_public, subject_ids, lang)
+            .update_one(id, title, description, is_private, subject_ids, lang)
             .await;
 
         match result {
@@ -252,7 +252,7 @@ impl From<CollectionWithSubjects> for CollectionResponse {
             id: cws.collection.id,
             title: cws.collection.title,
             description: cws.collection.description,
-            is_public: cws.collection.is_public,
+            is_private: cws.collection.is_private,
             subject_ids: cws.subject_ids,
         }
     }
