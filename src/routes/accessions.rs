@@ -71,12 +71,55 @@ async fn create_accession_raw(
     let create_accession_raw_request = match state
         .accessions_service
         .clone()
-        .extract_accession_from_multipart_form(multipart, state.subjects_service)
+        .extract_accession_from_multipart_form(multipart, state.subjects_service.clone())
         .await
     {
         Ok(data) => data,
         Err(response) => return response,
     };
+
+    let subjects_exist = state
+        .subjects_service
+        .clone()
+        .verify_subjects_exist(
+            create_accession_raw_request.metadata_subjects.clone(),
+            create_accession_raw_request.metadata_language,
+        )
+        .await;
+    match subjects_exist {
+        Err(err) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+        }
+        Ok(flag) => {
+            if !flag {
+                return (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response();
+            }
+        }
+    };
+    let mut location_ids: Vec<i32> = vec![];
+    if let Some(en_id) = create_accession_raw_request.metadata_location_en_id {
+        location_ids.push(en_id);
+    }
+    if let Some(ar_id) = create_accession_raw_request.metadata_location_ar_id {
+        location_ids.push(ar_id);
+    }
+    if !location_ids.is_empty() {
+        let locations_exist = state
+            .locations_service
+            .clone()
+            .verify_locations_exist(location_ids, create_accession_raw_request.metadata_language)
+            .await;
+        match locations_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
+                }
+            }
+        };
+    }
 
     match state
         .accessions_service
@@ -140,6 +183,30 @@ async fn create_accession_crawl(
             }
         }
     };
+    let mut location_ids: Vec<i32> = vec![];
+    if let Some(en_id) = payload.metadata_location_en_id {
+        location_ids.push(en_id);
+    }
+    if let Some(ar_id) = payload.metadata_location_ar_id {
+        location_ids.push(ar_id);
+    }
+    if !location_ids.is_empty() {
+        let locations_exist = state
+            .locations_service
+            .clone()
+            .verify_locations_exist(location_ids, payload.metadata_language)
+            .await;
+        match locations_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
+                }
+            }
+        };
+    }
     tokio::spawn(async move {
         state
             .accessions_service
@@ -323,6 +390,30 @@ async fn update_accession(
             }
         }
     };
+    let mut location_ids: Vec<i32> = vec![];
+    if let Some(en_id) = payload.metadata_location_en_id {
+        location_ids.push(en_id);
+    }
+    if let Some(ar_id) = payload.metadata_location_ar_id {
+        location_ids.push(ar_id);
+    }
+    if !location_ids.is_empty() {
+        let locations_exist = state
+            .locations_service
+            .clone()
+            .verify_locations_exist(location_ids, payload.metadata_language)
+            .await;
+        match locations_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
+                }
+            }
+        };
+    }
     state.accessions_service.update_one(id, payload).await
 }
 
@@ -405,8 +496,8 @@ mod tests {
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file.wacz".to_string()),
                     send_email_notification: true,
-                    metadata_location_en: None,
-                    metadata_location_ar: None,
+                    metadata_location_en_id: None,
+                    metadata_location_ar_id: None,
                 },
                 Uuid::new_v4(),
             )
@@ -430,8 +521,8 @@ mod tests {
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file-2.wacz".to_string()),
                     send_email_notification: true,
-                    metadata_location_en: None,
-                    metadata_location_ar: None,
+                    metadata_location_en_id: None,
+                    metadata_location_ar_id: None,
                 },
                 Uuid::new_v4(),
             )

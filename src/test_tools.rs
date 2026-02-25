@@ -17,11 +17,13 @@ use crate::repos::auth_repo::{ApiKeyUserInfo, AuthRepo};
 use crate::repos::browsertrix_repo::{BrowsertrixError, BrowsertrixRepo};
 use crate::repos::collections_repo::{CollectionWithSubjects, CollectionsRepo};
 use crate::repos::emails_repo::EmailsRepo;
+use crate::repos::locations_repo::LocationsRepo;
 use crate::repos::s3_repo::S3Repo;
 use crate::repos::subjects_repo::SubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
 use crate::services::collections_service::CollectionsService;
+use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
 use ::entity::sea_orm_active_enums::{DublinMetadataFormat, Role};
 use async_trait::async_trait;
@@ -239,6 +241,92 @@ impl CollectionsRepo for InMemoryCollectionsRepo {
         _lang: MetadataLanguage,
     ) -> Result<Option<CollectionWithSubjects>, DbErr> {
         Ok(Some(mock_one_collection_with_subjects()))
+    }
+}
+
+/// In-memory implementation of LocationsRepo for testing.
+#[derive(Clone, Debug, Default)]
+pub struct InMemoryLocationsRepo {}
+
+#[async_trait]
+impl LocationsRepo for InMemoryLocationsRepo {
+    async fn write_one(
+        &self,
+        create_location_request: crate::models::request::CreateLocationRequest,
+    ) -> Result<crate::models::response::LocationResponse, DbErr> {
+        let location = match create_location_request.lang {
+            MetadataLanguage::English => "Khartoum".to_string(),
+            MetadataLanguage::Arabic => "الخرطوم".to_string(),
+        };
+        Ok(crate::models::response::LocationResponse { id: 1, location })
+    }
+
+    async fn list_paginated_ar(
+        &self,
+        page: u64,
+        per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_location_ar::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_location_ar::Model {
+                id: 1,
+                location: "الخرطوم".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn list_paginated_en(
+        &self,
+        page: u64,
+        per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_location_en::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_location_en::Model {
+                id: 1,
+                location: "Khartoum".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn verify_locations_exist(
+        &self,
+        _location_ids: Vec<i32>,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<bool, DbErr> {
+        Ok(true)
+    }
+
+    async fn update_one(
+        &self,
+        _location_id: i32,
+        _update_location_request: crate::models::request::UpdateLocationRequest,
+    ) -> Result<Option<crate::models::response::LocationResponse>, DbErr> {
+        Ok(Some(crate::models::response::LocationResponse {
+            id: 1,
+            location: "updated location".to_string(),
+        }))
+    }
+
+    async fn delete_one(
+        &self,
+        _location_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<()>, DbErr> {
+        Ok(Some(()))
+    }
+
+    async fn get_one(
+        &self,
+        _location_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<crate::models::response::LocationResponse>, DbErr> {
+        Ok(Some(crate::models::response::LocationResponse {
+            id: 1,
+            location: "Khartoum".to_string(),
+        }))
     }
 }
 
@@ -536,6 +624,12 @@ pub fn build_test_subjects_service() -> SubjectsService {
     SubjectsService { subjects_repo }
 }
 
+/// Builds a test locations service with in-memory repository.
+pub fn build_test_locations_service() -> LocationsService {
+    let locations_repo = Arc::new(InMemoryLocationsRepo::default());
+    LocationsService { locations_repo }
+}
+
 /// Builds a test collections service with in-memory repositories.
 pub fn build_test_collections_service() -> CollectionsService {
     let collections_repo = Arc::new(InMemoryCollectionsRepo::default());
@@ -552,11 +646,13 @@ pub fn build_test_app() -> Router {
     let accessions_service = build_test_accessions_service();
     let collections_service = build_test_collections_service();
     let subjects_service = build_test_subjects_service();
+    let locations_service = build_test_locations_service();
     let auth_service = build_test_auth_service();
     let app_state = AppState {
         accessions_service,
         collections_service,
         subjects_service,
+        locations_service,
         auth_service,
     };
     let mut app_config = AppConfig::default();

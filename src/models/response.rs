@@ -227,3 +227,19 @@ pub struct ListCollectionsResponse {
     pub page: u64,
     pub per_page: u64,
 }
+
+/// Response containing a single location.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct LocationResponse {
+    pub id: i32,
+    pub location: String,
+}
+
+/// Response for listing locations with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListLocationsResponse {
+    pub items: Vec<LocationResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}
