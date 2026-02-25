@@ -52,7 +52,6 @@ pub trait LocationsRepo: Send + Sync {
     ) -> Result<(Vec<DublinMetadataLocationEnModel>, u64), DbErr>;
 
     /// Verifies that all provided location IDs exist in the database.
-    #[allow(dead_code)]
     async fn verify_locations_exist(
         &self,
         location_ids: Vec<i32>,

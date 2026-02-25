@@ -134,7 +134,6 @@ impl LocationsService {
         }
     }
 
-    #[allow(dead_code)]
     pub async fn verify_locations_exist(
         self,
         location_ids: Vec<i32>,

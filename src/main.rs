@@ -85,6 +85,9 @@ async fn main() {
     )
     .await
     .expect("Could not create DigitalOcean Spaces repo");
+    let locations_service = LocationsService {
+        locations_repo: Arc::new(locations_repo),
+    };
     let accessions_service = AccessionsService {
         accessions_repo: Arc::new(accessions_repo),
         auth_repo: Arc::new(auth_repo.clone()),
@@ -99,9 +102,6 @@ async fn main() {
     };
     let subjects_service = SubjectsService {
         subjects_repo: Arc::new(subjects_repo.clone()),
-    };
-    let locations_service = LocationsService {
-        locations_repo: Arc::new(locations_repo),
     };
     let collections_service = CollectionsService {
         collections_repo: Arc::new(collections_repo),

@@ -13,6 +13,7 @@ use crate::repos::auth_repo::AuthRepo;
 use crate::repos::browsertrix_repo::BrowsertrixRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::s3_repo::S3Repo;
+use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
 use ::entity::accessions_with_metadata::Model as AccessionWithMetadataModel;
 use axum::extract::multipart::Field;
@@ -675,6 +676,7 @@ impl AccessionsService {
         self,
         mut multipart: Multipart,
         subjects_service: SubjectsService,
+        locations_service: LocationsService,
     ) -> Result<CreateAccessionRequestRaw, Response> {
         let mut metadata_payload: Option<CreateAccessionRequestRaw> = None;
         let mut step = MultiPartExtractionStep::ExpectMetadata; // first field must be the metadata JSON
@@ -745,6 +747,33 @@ impl AccessionsService {
                     }
                 };
                 info!("Validated metadata subjects exist");
+
+                let mut location_ids: Vec<i32> = vec![];
+                if let Some(en_id) = parsed.metadata_location_en_id {
+                    location_ids.push(en_id);
+                }
+                if let Some(ar_id) = parsed.metadata_location_ar_id {
+                    location_ids.push(ar_id);
+                }
+                if !location_ids.is_empty() {
+                    let locations_exist = locations_service
+                        .clone()
+                        .verify_locations_exist(location_ids, parsed.metadata_language)
+                        .await;
+                    match locations_exist {
+                        Err(err) => {
+                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+                                .into_response());
+                        }
+                        Ok(flag) => {
+                            if !flag {
+                                return Err((StatusCode::BAD_REQUEST, "Locations do not exist")
+                                    .into_response());
+                            }
+                        }
+                    };
+                    info!("Validated metadata locations exist");
+                }
 
                 metadata_payload = Some(parsed);
                 step = MultiPartExtractionStep::ExpectFile;
