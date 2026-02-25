@@ -31,6 +31,8 @@ pub struct CreateAccessionRequest {
     pub s3_filename: Option<String>,
     #[serde(default = "bool::default")]
     pub send_email_notification: bool,
+    pub metadata_location_en_id: Option<i32>,
+    pub metadata_location_ar_id: Option<i32>,
 }
 
 /// Request for creating a new accession from raw file + metadata.
@@ -50,6 +52,8 @@ pub struct CreateAccessionRequestRaw {
     #[validate(url)]
     pub original_url: String,
     pub s3_filename: String,
+    pub metadata_location_en_id: Option<i32>,
+    pub metadata_location_ar_id: Option<i32>,
 }
 
 /// Request for creating a new accession from raw file + metadata via multipart upload.
@@ -93,6 +97,7 @@ pub struct AccessionPagination {
     pub url_filter: Option<String>,
     pub date_from: Option<NaiveDateTime>,
     pub date_to: Option<NaiveDateTime>,
+    pub location: Option<String>,
 }
 
 impl Default for AccessionPagination {
@@ -107,6 +112,7 @@ impl Default for AccessionPagination {
             url_filter: None,
             date_from: None,
             date_to: None,
+            location: None,
         }
     }
 }
@@ -131,6 +137,7 @@ pub struct AccessionPaginationWithPrivate {
     pub date_from: Option<NaiveDateTime>,
     pub date_to: Option<NaiveDateTime>,
     pub is_private: bool,
+    pub location: Option<String>,
 }
 
 impl Default for AccessionPaginationWithPrivate {
@@ -146,6 +153,7 @@ impl Default for AccessionPaginationWithPrivate {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         }
     }
 }
@@ -212,6 +220,8 @@ pub struct UpdateAccessionRequest {
     #[schema(example = json!([1, 2, 3]))]
     pub metadata_subjects: Vec<i32>,
     pub is_private: bool,
+    pub metadata_location_en_id: Option<i32>,
+    pub metadata_location_ar_id: Option<i32>,
 }
 
 /// Request for updating a subject category.
@@ -377,6 +387,69 @@ pub struct SubjectLangParam {
 }
 
 impl Default for SubjectLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}
+
+/// Request for creating a new location.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct CreateLocationRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub location: String,
+}
+
+/// Request for updating a location.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateLocationRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub location: String,
+}
+
+/// Request for deleting a location.
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct DeleteLocationRequest {
+    pub lang: MetadataLanguage,
+}
+
+/// Pagination and filtering parameters for listing locations.
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct LocationPagination {
+    #[schema(default = 0)]
+    pub page: u64,
+    #[validate(range(min = 1, max = 200))]
+    #[schema(default = 20, minimum = 1, maximum = 200)]
+    pub per_page: u64,
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 500))]
+    pub query_term: Option<String>,
+}
+
+impl Default for LocationPagination {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            per_page: 20,
+            lang: MetadataLanguage::English,
+            query_term: None,
+        }
+    }
+}
+
+/// Query parameters for location endpoints that require a language specification.
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct LocationLangParam {
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for LocationLangParam {
     fn default() -> Self {
         Self {
             lang: MetadataLanguage::English,

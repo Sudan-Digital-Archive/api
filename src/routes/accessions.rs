@@ -71,7 +71,11 @@ async fn create_accession_raw(
     let create_accession_raw_request = match state
         .accessions_service
         .clone()
-        .extract_accession_from_multipart_form(multipart, state.subjects_service)
+        .extract_accession_from_multipart_form(
+            multipart,
+            state.subjects_service.clone(),
+            state.locations_service.clone(),
+        )
         .await
     {
         Ok(data) => data,
@@ -140,6 +144,30 @@ async fn create_accession_crawl(
             }
         }
     };
+    let mut location_ids: Vec<i32> = vec![];
+    if let Some(en_id) = payload.metadata_location_en_id {
+        location_ids.push(en_id);
+    }
+    if let Some(ar_id) = payload.metadata_location_ar_id {
+        location_ids.push(ar_id);
+    }
+    if !location_ids.is_empty() {
+        let locations_exist = state
+            .locations_service
+            .clone()
+            .verify_locations_exist(location_ids, payload.metadata_language)
+            .await;
+        match locations_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
+                }
+            }
+        };
+    }
     tokio::spawn(async move {
         state
             .accessions_service
@@ -220,6 +248,7 @@ async fn list_accessions(
         date_from: pagination.0.date_from,
         date_to: pagination.0.date_to,
         is_private: false,
+        location: pagination.0.location,
     };
     state.accessions_service.list(list_params).await
 }
@@ -322,6 +351,30 @@ async fn update_accession(
             }
         }
     };
+    let mut location_ids: Vec<i32> = vec![];
+    if let Some(en_id) = payload.metadata_location_en_id {
+        location_ids.push(en_id);
+    }
+    if let Some(ar_id) = payload.metadata_location_ar_id {
+        location_ids.push(ar_id);
+    }
+    if !location_ids.is_empty() {
+        let locations_exist = state
+            .locations_service
+            .clone()
+            .verify_locations_exist(location_ids, payload.metadata_language)
+            .await;
+        match locations_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
+                }
+            }
+        };
+    }
     state.accessions_service.update_one(id, payload).await
 }
 
@@ -404,6 +457,8 @@ mod tests {
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file.wacz".to_string()),
                     send_email_notification: true,
+                    metadata_location_en_id: None,
+                    metadata_location_ar_id: None,
                 },
                 Uuid::new_v4(),
             )
@@ -427,6 +482,8 @@ mod tests {
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file-2.wacz".to_string()),
                     send_email_notification: true,
+                    metadata_location_en_id: None,
+                    metadata_location_ar_id: None,
                 },
                 Uuid::new_v4(),
             )

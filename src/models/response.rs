@@ -28,10 +28,12 @@ pub struct AccessionsWithMetadataResponse {
     pub dublin_metadata_format: DublinMetadataFormat,
     pub title_en: Option<String>,
     pub description_en: Option<String>,
+    pub location_en: Option<String>,
     pub subjects_en: Option<Vec<String>>,
     pub subjects_en_ids: Option<Vec<i32>>,
     pub title_ar: Option<String>,
     pub description_ar: Option<String>,
+    pub location_ar: Option<String>,
     pub subjects_ar: Option<Vec<String>>,
     pub subjects_ar_ids: Option<Vec<i32>>,
     pub has_english_metadata: bool,
@@ -53,10 +55,12 @@ impl From<AccessionsWithMetadataModel> for AccessionsWithMetadataResponse {
             dublin_metadata_format: model.dublin_metadata_format,
             title_en: model.title_en,
             description_en: model.description_en,
+            location_en: model.location_en,
             subjects_en: model.subjects_en,
             subjects_en_ids: model.subjects_en_ids,
             title_ar: model.title_ar,
             description_ar: model.description_ar,
+            location_ar: model.location_ar,
             subjects_ar: model.subjects_ar,
             subjects_ar_ids: model.subjects_ar_ids,
             has_english_metadata: model.has_english_metadata,
@@ -219,6 +223,22 @@ pub struct CollectionResponse {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
 pub struct ListCollectionsResponse {
     pub items: Vec<CollectionResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}
+
+/// Response containing a single location.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct LocationResponse {
+    pub id: i32,
+    pub location: String,
+}
+
+/// Response for listing locations with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListLocationsResponse {
+    pub items: Vec<LocationResponse>,
     pub num_pages: u64,
     pub page: u64,
     pub per_page: u64,

@@ -1,15 +1,16 @@
 use crate::models::request::{
     AccessionPagination, AccessionPaginationWithPrivate, AuthorizeRequest, CollectionLangParam,
     CollectionPagination, CollectionPaginationWithPrivate, CreateAccessionRequest,
-    CreateAccessionRequestRaw, CreateCollectionRequest, CreateSubjectRequest, CreateUserRequest,
-    DeleteSubjectRequest, LoginRequest, RevokeApiKeyRequest, SubjectLangParam, SubjectPagination,
-    UpdateAccessionRequest, UpdateCollectionRequest, UpdateSubjectRequest, UpdateUserRequest,
-    UserPagination,
+    CreateAccessionRequestRaw, CreateCollectionRequest, CreateLocationRequest,
+    CreateSubjectRequest, CreateUserRequest, DeleteLocationRequest, DeleteSubjectRequest,
+    LocationLangParam, LocationPagination, LoginRequest, RevokeApiKeyRequest, SubjectLangParam,
+    SubjectPagination, UpdateAccessionRequest, UpdateCollectionRequest, UpdateLocationRequest,
+    UpdateSubjectRequest, UpdateUserRequest, UserPagination,
 };
 use crate::models::response::{
     CollectionResponse, CreateApiKeyResponse, GetOneAccessionResponse, ListAccessionsResponse,
-    ListCollectionsResponse, ListSubjectsArResponse, ListSubjectsEnResponse, ListUsersResponse,
-    SubjectResponse, UserResponse,
+    ListCollectionsResponse, ListLocationsResponse, ListSubjectsArResponse, ListSubjectsEnResponse,
+    ListUsersResponse, LocationResponse, SubjectResponse, UserResponse,
 };
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::{Modify, OpenApi};
@@ -57,6 +58,11 @@ impl Modify for SecurityAddon {
         crate::routes::subjects::get_one_subject,
         crate::routes::subjects::delete_subject,
         crate::routes::subjects::update_subject,
+        crate::routes::locations::create_location,
+        crate::routes::locations::list_locations,
+        crate::routes::locations::get_one_location,
+        crate::routes::locations::delete_location,
+        crate::routes::locations::update_location,
         crate::routes::collections::list_collections,
         crate::routes::collections::list_collections_private,
         crate::routes::collections::get_one_collection,
@@ -84,6 +90,13 @@ impl Modify for SecurityAddon {
             SubjectResponse,
             ListSubjectsEnResponse,
             ListSubjectsArResponse,
+            CreateLocationRequest,
+            UpdateLocationRequest,
+            DeleteLocationRequest,
+            LocationPagination,
+            LocationLangParam,
+            LocationResponse,
+            ListLocationsResponse,
             CreateUserRequest,
             UpdateUserRequest,
             UserPagination,
@@ -104,6 +117,7 @@ impl Modify for SecurityAddon {
         (name = "Accessions", description = "Accession management endpoints"),
         (name = "Auth", description = "User authentication endpoints"),
         (name = "Subjects", description = "Subject management endpoints"),
+        (name = "Locations", description = "Location management endpoints"),
         (name = "Collections", description = "Collection management endpoints")
     ),
     modifiers(&SecurityAddon),

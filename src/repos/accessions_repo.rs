@@ -127,6 +127,8 @@ struct CreateAccessionData {
     is_private: bool,
     metadata_format: DublinMetadataFormat,
     s3_filename: Option<String>,
+    metadata_location_en_id: Option<i32>,
+    metadata_location_ar_id: Option<i32>,
 }
 
 impl DBAccessionsRepo {
@@ -137,6 +139,7 @@ impl DBAccessionsRepo {
     /// `write_one` and `write_one_raw` methods.
     async fn _create_one(&self, accession_data: CreateAccessionData) -> Result<i32, DbErr> {
         let txn = self.db_session.begin().await?;
+
         let (dublin_metadata_en_id, dublin_metadata_ar_id) = match accession_data.metadata_language
         {
             MetadataLanguage::English => {
@@ -144,6 +147,7 @@ impl DBAccessionsRepo {
                     id: Default::default(),
                     title: ActiveValue::Set(accession_data.metadata_title),
                     description: ActiveValue::Set(accession_data.metadata_description),
+                    location_en_id: ActiveValue::Set(accession_data.metadata_location_en_id),
                 };
                 let inserted_metadata = metadata.save(&txn).await?;
                 let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -165,6 +169,7 @@ impl DBAccessionsRepo {
                     id: Default::default(),
                     title: ActiveValue::Set(accession_data.metadata_title),
                     description: ActiveValue::Set(accession_data.metadata_description),
+                    location_ar_id: ActiveValue::Set(accession_data.metadata_location_ar_id),
                 };
                 let inserted_metadata = metadata.save(&txn).await?;
                 let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -230,6 +235,8 @@ impl AccessionsRepo for DBAccessionsRepo {
             is_private: create_accession_request.is_private,
             metadata_format: create_accession_request.metadata_format,
             s3_filename: create_accession_request.s3_filename,
+            metadata_location_en_id: create_accession_request.metadata_location_en_id,
+            metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
         };
         self._create_one(accession_data).await
     }
@@ -252,6 +259,8 @@ impl AccessionsRepo for DBAccessionsRepo {
             is_private: create_accession_request.is_private,
             metadata_format: create_accession_request.metadata_format,
             s3_filename: Some(create_accession_request.s3_filename),
+            metadata_location_en_id: create_accession_request.metadata_location_en_id,
+            metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
         };
         self._create_one(accession_data).await
     }
@@ -291,6 +300,7 @@ impl AccessionsRepo for DBAccessionsRepo {
             date_from: params.date_from,
             date_to: params.date_to,
             is_private: params.is_private,
+            location: params.location,
         };
         let filter_expression = build_filter_expression(filter_params);
         let accession_pages;
@@ -352,6 +362,11 @@ impl AccessionsRepo for DBAccessionsRepo {
         match accession {
             Some(accession) => {
                 let mut accession_active: AccessionActiveModel = accession.clone().into();
+
+                let location_en_id = update_accession_request.metadata_location_en_id;
+
+                let location_ar_id = update_accession_request.metadata_location_ar_id;
+
                 match update_accession_request.metadata_language {
                     MetadataLanguage::English => {
                         let metadata = DublinMetadataEnActiveModel {
@@ -363,6 +378,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                             description: ActiveValue::Set(
                                 update_accession_request.metadata_description,
                             ),
+                            location_en_id: ActiveValue::Set(location_en_id),
                         };
                         let inserted_metadata = metadata.save(&txn).await?;
                         let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -393,6 +409,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                             description: ActiveValue::Set(
                                 update_accession_request.metadata_description,
                             ),
+                            location_ar_id: ActiveValue::Set(location_ar_id),
                         };
                         let inserted_metadata = metadata.save(&txn).await?;
                         let metadata_id = inserted_metadata.try_into_model()?.id;

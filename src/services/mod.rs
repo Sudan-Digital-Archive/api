@@ -1,4 +1,5 @@
 pub mod accessions_service;
 pub mod auth_service;
 pub mod collections_service;
+pub mod locations_service;
 pub mod subjects_service;
