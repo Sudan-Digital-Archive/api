@@ -97,6 +97,7 @@ pub struct AccessionPagination {
     pub url_filter: Option<String>,
     pub date_from: Option<NaiveDateTime>,
     pub date_to: Option<NaiveDateTime>,
+    pub location: Option<String>,
 }
 
 impl Default for AccessionPagination {
@@ -111,6 +112,7 @@ impl Default for AccessionPagination {
             url_filter: None,
             date_from: None,
             date_to: None,
+            location: None,
         }
     }
 }
@@ -135,6 +137,7 @@ pub struct AccessionPaginationWithPrivate {
     pub date_from: Option<NaiveDateTime>,
     pub date_to: Option<NaiveDateTime>,
     pub is_private: bool,
+    pub location: Option<String>,
 }
 
 impl Default for AccessionPaginationWithPrivate {
@@ -150,6 +153,7 @@ impl Default for AccessionPaginationWithPrivate {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         }
     }
 }

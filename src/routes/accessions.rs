@@ -220,6 +220,7 @@ async fn list_accessions(
         date_from: pagination.0.date_from,
         date_to: pagination.0.date_to,
         is_private: false,
+        location: pagination.0.location,
     };
     state.accessions_service.list(list_params).await
 }

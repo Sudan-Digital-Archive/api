@@ -8,6 +8,7 @@ use crate::models::common::MetadataLanguage;
 use chrono::NaiveDateTime;
 use entity::accessions_with_metadata;
 use sea_orm::prelude::Expr;
+use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{sea_query, ColumnTrait};
 use sea_query::extension::postgres::PgBinOper;
@@ -22,6 +23,7 @@ pub struct FilterParams {
     pub date_from: Option<NaiveDateTime>,
     pub date_to: Option<NaiveDateTime>,
     pub is_private: bool,
+    pub location: Option<String>,
 }
 
 /// Defines the structure for metadata subjects filtering.
@@ -262,6 +264,16 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
             expression.map(|e| e.and(accessions_with_metadata::Column::SeedUrl.like(url_like)));
     }
 
+    if let Some(location) = params.location {
+        let location_col = match params.metadata_language {
+            MetadataLanguage::English => accessions_with_metadata::Column::LocationEn,
+            MetadataLanguage::Arabic => accessions_with_metadata::Column::LocationAr,
+        };
+        let location_ilike = format!("%{}%", location);
+        expression =
+            expression.map(|e| e.and(Expr::expr(location_col.into_expr()).ilike(location_ilike)));
+    }
+
     expression
 }
 
@@ -280,6 +292,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params);
         let expected = Some(
@@ -301,6 +314,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params);
         let expected = Some(
@@ -317,6 +331,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params);
         let expected = Some(
@@ -337,6 +352,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params.clone());
         let (_full_text_col, ts_lang) = match params.metadata_language {
@@ -367,6 +383,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params.clone());
         let (_full_text_col, ts_lang) = ("full_text_ar", "arabic");
@@ -402,6 +419,7 @@ mod tests {
             date_from: Some(from_date),
             date_to: Some(to_date),
             is_private: false,
+            location: None,
         };
 
         let actual = build_filter_expression(params);
@@ -430,6 +448,7 @@ mod tests {
             date_from: Some(from_date),
             date_to: None,
             is_private: false,
+            location: None,
         };
 
         let actual = build_filter_expression(params);
@@ -457,6 +476,7 @@ mod tests {
             date_from: None,
             date_to: Some(to_date),
             is_private: false,
+            location: None,
         };
 
         let actual = build_filter_expression(params);
@@ -488,6 +508,7 @@ mod tests {
             date_from: Some(from_date),
             date_to: Some(to_date),
             is_private: false,
+            location: None,
         };
 
         let actual = build_filter_expression(params);
@@ -517,6 +538,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual_lower = build_filter_expression(params_lower);
         let params_upper = FilterParams {
@@ -527,6 +549,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual_upper = build_filter_expression(params_upper);
 
@@ -570,6 +593,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params);
 
@@ -598,6 +622,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params);
 
@@ -626,6 +651,7 @@ mod tests {
             date_from: None,
             date_to: None,
             is_private: false,
+            location: None,
         };
         let actual = build_filter_expression(params);
 
@@ -643,5 +669,195 @@ mod tests {
         );
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_build_filter_location_english_only() {
+        let params = FilterParams {
+            metadata_language: MetadataLanguage::English,
+            metadata_subjects: None,
+            query_term: None,
+            url_filter: None,
+            date_from: None,
+            date_to: None,
+            is_private: false,
+            location: Some("Khartoum".to_string()),
+        };
+        let actual = build_filter_expression(params);
+        let expected = Some(
+            Expr::col(accessions_with_metadata::Column::HasEnglishMetadata)
+                .eq(true)
+                .and(accessions_with_metadata::Column::IsPrivate.eq(false))
+                .and(
+                    Expr::expr(accessions_with_metadata::Column::LocationEn.into_expr())
+                        .ilike("%Khartoum%"),
+                ),
+        );
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_build_filter_location_arabic_only() {
+        let params = FilterParams {
+            metadata_language: MetadataLanguage::Arabic,
+            metadata_subjects: None,
+            query_term: None,
+            url_filter: None,
+            date_from: None,
+            date_to: None,
+            is_private: false,
+            location: Some("الخرطوم".to_string()),
+        };
+        let actual = build_filter_expression(params);
+        let expected = Some(
+            Expr::col(accessions_with_metadata::Column::HasArabicMetadata)
+                .eq(true)
+                .and(accessions_with_metadata::Column::IsPrivate.eq(false))
+                .and(
+                    Expr::expr(accessions_with_metadata::Column::LocationAr.into_expr())
+                        .ilike("%الخرطوم%"),
+                ),
+        );
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_build_filter_location_and_query_term() {
+        let params = FilterParams {
+            metadata_language: MetadataLanguage::English,
+            metadata_subjects: None,
+            query_term: Some("test".to_string()),
+            url_filter: None,
+            date_from: None,
+            date_to: None,
+            is_private: false,
+            location: Some("Sudan".to_string()),
+        };
+        let actual = build_filter_expression(params);
+        let term = "test".to_string();
+        let expected = Some(
+            Expr::cust("full_text_en")
+                .binary(
+                    PgBinOper::Matches,
+                    Expr::cust_with_values("plainto_tsquery('english', $1)", [&term]),
+                )
+                .and(Expr::col(accessions_with_metadata::Column::HasEnglishMetadata).eq(true))
+                .and(accessions_with_metadata::Column::IsPrivate.eq(false))
+                .and(
+                    Expr::expr(accessions_with_metadata::Column::LocationEn.into_expr())
+                        .ilike("%Sudan%"),
+                ),
+        );
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_build_filter_location_and_date_range() {
+        let from_date = NaiveDate::from_ymd_opt(2023, 1, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let to_date = NaiveDate::from_ymd_opt(2023, 12, 31)
+            .unwrap()
+            .and_hms_opt(23, 59, 59)
+            .unwrap();
+
+        let params = FilterParams {
+            metadata_language: MetadataLanguage::English,
+            metadata_subjects: None,
+            query_term: None,
+            url_filter: None,
+            date_from: Some(from_date),
+            date_to: Some(to_date),
+            is_private: false,
+            location: Some("Nairobi".to_string()),
+        };
+
+        let actual = build_filter_expression(params);
+        let expected = Some(
+            accessions_with_metadata::Column::DublinMetadataDate
+                .gte(from_date)
+                .and(accessions_with_metadata::Column::DublinMetadataDate.lte(to_date))
+                .and(Expr::col(accessions_with_metadata::Column::HasEnglishMetadata).eq(true))
+                .and(accessions_with_metadata::Column::IsPrivate.eq(false))
+                .and(
+                    Expr::expr(accessions_with_metadata::Column::LocationEn.into_expr())
+                        .ilike("%Nairobi%"),
+                ),
+        );
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_build_filter_location_and_metadata_subjects() {
+        let subjects = vec![1, 2, 3];
+        let params = FilterParams {
+            metadata_language: MetadataLanguage::Arabic,
+            metadata_subjects: Some(MetadataSubjects {
+                metadata_subjects: subjects.clone(),
+                metadata_subjects_inclusive_filter: true,
+            }),
+            query_term: None,
+            url_filter: None,
+            date_from: None,
+            date_to: None,
+            is_private: false,
+            location: Some(" Cairo ".to_string()),
+        };
+        let actual = build_filter_expression(params);
+
+        let subjects_column = Expr::col(accessions_with_metadata::Column::SubjectsArIds);
+        let expected = Some(
+            Expr::col(accessions_with_metadata::Column::HasArabicMetadata)
+                .eq(true)
+                .and(accessions_with_metadata::Column::IsPrivate.eq(false))
+                .and(subjects_column.binary(PgBinOper::Overlap, subjects))
+                .and(
+                    Expr::expr(accessions_with_metadata::Column::LocationAr.into_expr())
+                        .ilike("% Cairo %"),
+                ),
+        );
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_build_filter_location_case_insensitive() {
+        let params_lower = FilterParams {
+            metadata_language: MetadataLanguage::English,
+            metadata_subjects: None,
+            query_term: None,
+            url_filter: None,
+            date_from: None,
+            date_to: None,
+            is_private: false,
+            location: Some("sudan".to_string()),
+        };
+        let actual_lower = build_filter_expression(params_lower);
+
+        let params_upper = FilterParams {
+            metadata_language: MetadataLanguage::English,
+            metadata_subjects: None,
+            query_term: None,
+            url_filter: None,
+            date_from: None,
+            date_to: None,
+            is_private: false,
+            location: Some("SUDAN".to_string()),
+        };
+        let actual_upper = build_filter_expression(params_upper);
+
+        let expected = Some(
+            Expr::col(accessions_with_metadata::Column::HasEnglishMetadata)
+                .eq(true)
+                .and(accessions_with_metadata::Column::IsPrivate.eq(false))
+                .and(
+                    Expr::expr(accessions_with_metadata::Column::LocationEn.into_expr())
+                        .ilike("%sudan%"),
+                ),
+        );
+
+        assert_eq!(actual_lower, expected);
+        assert_ne!(actual_upper, expected);
     }
 }

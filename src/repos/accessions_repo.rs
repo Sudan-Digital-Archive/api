@@ -342,6 +342,7 @@ impl AccessionsRepo for DBAccessionsRepo {
             date_from: params.date_from,
             date_to: params.date_to,
             is_private: params.is_private,
+            location: params.location,
         };
         let filter_expression = build_filter_expression(filter_params);
         let accession_pages;
