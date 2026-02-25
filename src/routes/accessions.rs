@@ -404,6 +404,8 @@ mod tests {
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file.wacz".to_string()),
                     send_email_notification: true,
+                    metadata_location_en: None,
+                    metadata_location_ar: None,
                 },
                 Uuid::new_v4(),
             )
@@ -427,6 +429,8 @@ mod tests {
                     metadata_format: DublinMetadataFormat::Wacz,
                     s3_filename: Some("test-file-2.wacz".to_string()),
                     send_email_notification: true,
+                    metadata_location_en: None,
+                    metadata_location_ar: None,
                 },
                 Uuid::new_v4(),
             )

@@ -31,6 +31,8 @@ pub struct CreateAccessionRequest {
     pub s3_filename: Option<String>,
     #[serde(default = "bool::default")]
     pub send_email_notification: bool,
+    pub metadata_location_en: Option<String>,
+    pub metadata_location_ar: Option<String>,
 }
 
 /// Request for creating a new accession from raw file + metadata.
@@ -50,6 +52,8 @@ pub struct CreateAccessionRequestRaw {
     #[validate(url)]
     pub original_url: String,
     pub s3_filename: String,
+    pub metadata_location_en: Option<String>,
+    pub metadata_location_ar: Option<String>,
 }
 
 /// Request for creating a new accession from raw file + metadata via multipart upload.
@@ -212,6 +216,8 @@ pub struct UpdateAccessionRequest {
     #[schema(example = json!([1, 2, 3]))]
     pub metadata_subjects: Vec<i32>,
     pub is_private: bool,
+    pub metadata_location_en: Option<String>,
+    pub metadata_location_ar: Option<String>,
 }
 
 /// Request for updating a subject category.

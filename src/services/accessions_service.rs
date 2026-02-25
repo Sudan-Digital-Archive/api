@@ -264,6 +264,8 @@ impl AccessionsService {
                                     metadata_format: DublinMetadataFormat::Wacz,
                                     s3_filename: Some(unique_filename.clone()),
                                     send_email_notification: payload.send_email_notification,
+                                    metadata_location_en: payload.metadata_location_en,
+                                    metadata_location_ar: payload.metadata_location_ar,
                                 };
                                 let write_result = self
                                     .accessions_repo
