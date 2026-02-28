@@ -11,6 +11,7 @@ pub struct Model {
     pub title: String,
     pub description: Option<String>,
     pub location_ar_id: Option<i32>,
+    pub creator_ar_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -25,6 +26,12 @@ pub enum Relation {
         to = "super::dublin_metadata_location_ar::Column::Id"
     )]
     DublinMetadataLocationAr,
+    #[sea_orm(
+        belongs_to = "super::dublin_metadata_creator_ar::Entity",
+        from = "Column::CreatorArId",
+        to = "super::dublin_metadata_creator_ar::Column::Id"
+    )]
+    DublinMetadataCreatorAr,
 }
 
 impl Related<super::accession::Entity> for Entity {
@@ -55,6 +62,12 @@ impl Related<super::dublin_metadata_subject_ar::Entity> for Entity {
 impl Related<super::dublin_metadata_location_ar::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::DublinMetadataLocationAr.def()
+    }
+}
+
+impl Related<super::dublin_metadata_creator_ar::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::DublinMetadataCreatorAr.def()
     }
 }
 

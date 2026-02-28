@@ -33,6 +33,8 @@ pub struct CreateAccessionRequest {
     pub send_email_notification: bool,
     pub metadata_location_en_id: Option<i32>,
     pub metadata_location_ar_id: Option<i32>,
+    pub metadata_creator_en_id: Option<i32>,
+    pub metadata_creator_ar_id: Option<i32>,
 }
 
 /// Request for creating a new accession from raw file + metadata.
@@ -54,6 +56,8 @@ pub struct CreateAccessionRequestRaw {
     pub s3_filename: String,
     pub metadata_location_en_id: Option<i32>,
     pub metadata_location_ar_id: Option<i32>,
+    pub metadata_creator_en_id: Option<i32>,
+    pub metadata_creator_ar_id: Option<i32>,
 }
 
 /// Request for creating a new accession from raw file + metadata via multipart upload.
@@ -222,6 +226,8 @@ pub struct UpdateAccessionRequest {
     pub is_private: bool,
     pub metadata_location_en_id: Option<i32>,
     pub metadata_location_ar_id: Option<i32>,
+    pub metadata_creator_en_id: Option<i32>,
+    pub metadata_creator_ar_id: Option<i32>,
 }
 
 /// Request for updating a subject category.
@@ -450,6 +456,64 @@ pub struct LocationLangParam {
 }
 
 impl Default for LocationLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct CreateCreatorRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub creator: String,
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateCreatorRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub creator: String,
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct DeleteCreatorRequest {
+    pub lang: MetadataLanguage,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct CreatorPagination {
+    #[schema(default = 0)]
+    pub page: u64,
+    #[validate(range(min = 1, max = 200))]
+    #[schema(default = 20, minimum = 1, maximum = 200)]
+    pub per_page: u64,
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 500))]
+    pub query_term: Option<String>,
+}
+
+impl Default for CreatorPagination {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            per_page: 20,
+            lang: MetadataLanguage::English,
+            query_term: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct CreatorLangParam {
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for CreatorLangParam {
     fn default() -> Self {
         Self {
             lang: MetadataLanguage::English,

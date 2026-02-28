@@ -267,6 +267,8 @@ impl AccessionsService {
                                     send_email_notification: payload.send_email_notification,
                                     metadata_location_en_id: payload.metadata_location_en_id,
                                     metadata_location_ar_id: payload.metadata_location_ar_id,
+                                    metadata_creator_en_id: payload.metadata_creator_en_id,
+                                    metadata_creator_ar_id: payload.metadata_creator_ar_id,
                                 };
                                 let write_result = self
                                     .accessions_repo

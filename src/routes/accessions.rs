@@ -459,6 +459,8 @@ mod tests {
                     send_email_notification: true,
                     metadata_location_en_id: None,
                     metadata_location_ar_id: None,
+                    metadata_creator_en_id: None,
+                    metadata_creator_ar_id: None,
                 },
                 Uuid::new_v4(),
             )
@@ -484,6 +486,8 @@ mod tests {
                     send_email_notification: true,
                     metadata_location_en_id: None,
                     metadata_location_ar_id: None,
+                    metadata_creator_en_id: None,
+                    metadata_creator_ar_id: None,
                 },
                 Uuid::new_v4(),
             )

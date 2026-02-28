@@ -8,6 +8,8 @@ pub mod collection_en;
 pub mod collection_en_subjects;
 pub mod dublin_metadata_ar;
 pub mod dublin_metadata_ar_subjects;
+pub mod dublin_metadata_creator_ar;
+pub mod dublin_metadata_creator_en;
 pub mod dublin_metadata_en;
 pub mod dublin_metadata_en_subjects;
 pub mod dublin_metadata_location_ar;

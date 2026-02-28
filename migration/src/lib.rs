@@ -13,6 +13,7 @@ mod m20260111_121608_add_contributor_role;
 mod m20260206_154024_add_collections_table;
 mod m20260222_143347_rename_is_public_to_is_private;
 mod m20260224_234743_create_dublin_metadata_location;
+mod m20260225_213320_create_dublin_metadata_creator;
 
 pub struct Migrator;
 
@@ -34,6 +35,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260206_154024_add_collections_table::Migration),
             Box::new(m20260222_143347_rename_is_public_to_is_private::Migration),
             Box::new(m20260224_234743_create_dublin_metadata_location::Migration),
+            Box::new(m20260225_213320_create_dublin_metadata_creator::Migration),
         ]
     }
 }

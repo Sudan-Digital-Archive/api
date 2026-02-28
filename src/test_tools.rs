@@ -16,6 +16,7 @@ use crate::repos::accessions_repo::AccessionsRepo;
 use crate::repos::auth_repo::{ApiKeyUserInfo, AuthRepo};
 use crate::repos::browsertrix_repo::{BrowsertrixError, BrowsertrixRepo};
 use crate::repos::collections_repo::{CollectionWithSubjects, CollectionsRepo};
+use crate::repos::creators_repo::CreatorsRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::locations_repo::LocationsRepo;
 use crate::repos::s3_repo::S3Repo;
@@ -23,6 +24,7 @@ use crate::repos::subjects_repo::SubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
 use crate::services::collections_service::CollectionsService;
+use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
 use ::entity::sea_orm_active_enums::{DublinMetadataFormat, Role};
@@ -330,6 +332,91 @@ impl LocationsRepo for InMemoryLocationsRepo {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct InMemoryCreatorsRepo {}
+
+#[async_trait]
+impl CreatorsRepo for InMemoryCreatorsRepo {
+    async fn write_one(
+        &self,
+        create_creator_request: crate::models::request::CreateCreatorRequest,
+    ) -> Result<crate::models::response::CreatorResponse, DbErr> {
+        let creator = match create_creator_request.lang {
+            MetadataLanguage::English => "Test Creator".to_string(),
+            MetadataLanguage::Arabic => "مختبر".to_string(),
+        };
+        Ok(crate::models::response::CreatorResponse { id: 1, creator })
+    }
+
+    async fn list_paginated_ar(
+        &self,
+        page: u64,
+        per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_creator_ar::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_creator_ar::Model {
+                id: 1,
+                creator: "مختبر".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn list_paginated_en(
+        &self,
+        page: u64,
+        per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_creator_en::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_creator_en::Model {
+                id: 1,
+                creator: "Test Creator".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn verify_creators_exist(
+        &self,
+        _creator_ids: Vec<i32>,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<bool, DbErr> {
+        Ok(true)
+    }
+
+    async fn update_one(
+        &self,
+        _creator_id: i32,
+        _update_creator_request: crate::models::request::UpdateCreatorRequest,
+    ) -> Result<Option<crate::models::response::CreatorResponse>, DbErr> {
+        Ok(Some(crate::models::response::CreatorResponse {
+            id: 1,
+            creator: "updated creator".to_string(),
+        }))
+    }
+
+    async fn delete_one(
+        &self,
+        _creator_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<()>, DbErr> {
+        Ok(Some(()))
+    }
+
+    async fn get_one(
+        &self,
+        _creator_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<crate::models::response::CreatorResponse>, DbErr> {
+        Ok(Some(crate::models::response::CreatorResponse {
+            id: 1,
+            creator: "Test Creator".to_string(),
+        }))
+    }
+}
+
 /// In-memory implementation of EmailsRepo for testing.
 #[derive(Clone, Debug, Default)]
 pub struct InMemoryEmailsRepo {}
@@ -630,6 +717,12 @@ pub fn build_test_locations_service() -> LocationsService {
     LocationsService { locations_repo }
 }
 
+/// Builds a test creators service with in-memory repository.
+pub fn build_test_creators_service() -> CreatorsService {
+    let creators_repo = Arc::new(InMemoryCreatorsRepo::default());
+    CreatorsService { creators_repo }
+}
+
 /// Builds a test collections service with in-memory repositories.
 pub fn build_test_collections_service() -> CollectionsService {
     let collections_repo = Arc::new(InMemoryCollectionsRepo::default());
@@ -647,12 +740,14 @@ pub fn build_test_app() -> Router {
     let collections_service = build_test_collections_service();
     let subjects_service = build_test_subjects_service();
     let locations_service = build_test_locations_service();
+    let creators_service = build_test_creators_service();
     let auth_service = build_test_auth_service();
     let app_state = AppState {
         accessions_service,
         collections_service,
         subjects_service,
         locations_service,
+        creators_service,
         auth_service,
     };
     let mut app_config = AppConfig::default();
@@ -685,9 +780,13 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         title_en: Some("English Title".to_string()),
         description_en: Some("English Description".to_string()),
         location_en: Some("English Location".to_string()),
+        creator_en_id: Some(1),
+        creator_en: Some("English Creator".to_string()),
         title_ar: Some("Arabic Title".to_string()),
         description_ar: Some("Arabic Description".to_string()),
         location_ar: Some("Arabic Location".to_string()),
+        creator_ar_id: Some(2),
+        creator_ar: Some("Arabic Creator".to_string()),
         subjects_en: Some(vec!["archive".to_string()]),
         subjects_ar: Some(vec!["mrhaba archive".to_string()]),
         seed_url: "https://example.com".to_string(),

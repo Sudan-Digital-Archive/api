@@ -243,3 +243,19 @@ pub struct ListLocationsResponse {
     pub page: u64,
     pub per_page: u64,
 }
+
+/// Response containing a single creator.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct CreatorResponse {
+    pub id: i32,
+    pub creator: String,
+}
+
+/// Response for listing creators with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListCreatorsResponse {
+    pub items: Vec<CreatorResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}
