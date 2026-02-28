@@ -190,20 +190,20 @@ pub struct InMemoryCollectionsRepo {}
 impl CollectionsRepo for InMemoryCollectionsRepo {
     async fn list_paginated_en(
         &self,
-        page: u64,
-        per_page: u64,
+        _page: u64,
+        _per_page: u64,
         _is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
-        Ok(mock_paginated_collections(page, per_page))
+        Ok(mock_paginated_collections(0, 10))
     }
 
     async fn list_paginated_ar(
         &self,
-        page: u64,
-        per_page: u64,
+        _page: u64,
+        _per_page: u64,
         _is_private: Option<bool>,
     ) -> Result<(Vec<CollectionWithSubjects>, u64), DbErr> {
-        Ok(mock_paginated_collections_ar(page, per_page))
+        Ok(mock_paginated_collections_ar(0, 10))
     }
 
     async fn get_one(
@@ -265,8 +265,8 @@ impl LocationsRepo for InMemoryLocationsRepo {
 
     async fn list_paginated_ar(
         &self,
-        page: u64,
-        per_page: u64,
+        _page: u64,
+        _per_page: u64,
         _query_term: Option<String>,
     ) -> Result<(Vec<entity::dublin_metadata_location_ar::Model>, u64), DbErr> {
         Ok((
@@ -280,8 +280,8 @@ impl LocationsRepo for InMemoryLocationsRepo {
 
     async fn list_paginated_en(
         &self,
-        page: u64,
-        per_page: u64,
+        _page: u64,
+        _per_page: u64,
         _query_term: Option<String>,
     ) -> Result<(Vec<entity::dublin_metadata_location_en::Model>, u64), DbErr> {
         Ok((
@@ -350,8 +350,8 @@ impl CreatorsRepo for InMemoryCreatorsRepo {
 
     async fn list_paginated_ar(
         &self,
-        page: u64,
-        per_page: u64,
+        _page: u64,
+        _per_page: u64,
         _query_term: Option<String>,
     ) -> Result<(Vec<entity::dublin_metadata_creator_ar::Model>, u64), DbErr> {
         Ok((
@@ -365,8 +365,8 @@ impl CreatorsRepo for InMemoryCreatorsRepo {
 
     async fn list_paginated_en(
         &self,
-        page: u64,
-        per_page: u64,
+        _page: u64,
+        _per_page: u64,
         _query_term: Option<String>,
     ) -> Result<(Vec<entity::dublin_metadata_creator_en::Model>, u64), DbErr> {
         Ok((
