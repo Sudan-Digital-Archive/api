@@ -134,7 +134,6 @@ impl CreatorsService {
         }
     }
 
-    #[allow(dead_code)]
     pub async fn verify_creators_exist(
         self,
         creator_ids: Vec<i32>,

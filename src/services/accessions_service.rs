@@ -13,6 +13,7 @@ use crate::repos::auth_repo::AuthRepo;
 use crate::repos::browsertrix_repo::BrowsertrixRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::s3_repo::S3Repo;
+use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
 use ::entity::accessions_with_metadata::Model as AccessionWithMetadataModel;
@@ -679,6 +680,7 @@ impl AccessionsService {
         mut multipart: Multipart,
         subjects_service: SubjectsService,
         locations_service: LocationsService,
+        creators_service: CreatorsService,
     ) -> Result<CreateAccessionRequestRaw, Response> {
         let mut metadata_payload: Option<CreateAccessionRequestRaw> = None;
         let mut step = MultiPartExtractionStep::ExpectMetadata; // first field must be the metadata JSON
@@ -775,6 +777,33 @@ impl AccessionsService {
                         }
                     };
                     info!("Validated metadata locations exist");
+                }
+
+                let mut creator_ids: Vec<i32> = vec![];
+                if let Some(en_id) = parsed.metadata_creator_en_id {
+                    creator_ids.push(en_id);
+                }
+                if let Some(ar_id) = parsed.metadata_creator_ar_id {
+                    creator_ids.push(ar_id);
+                }
+                if !creator_ids.is_empty() {
+                    let creators_exist = creators_service
+                        .clone()
+                        .verify_creators_exist(creator_ids, parsed.metadata_language)
+                        .await;
+                    match creators_exist {
+                        Err(err) => {
+                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+                                .into_response());
+                        }
+                        Ok(flag) => {
+                            if !flag {
+                                return Err((StatusCode::BAD_REQUEST, "Creators do not exist")
+                                    .into_response());
+                            }
+                        }
+                    };
+                    info!("Validated metadata creators exist");
                 }
 
                 metadata_payload = Some(parsed);
