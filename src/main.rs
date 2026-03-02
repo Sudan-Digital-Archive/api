@@ -15,6 +15,7 @@ use crate::repos::accessions_repo::DBAccessionsRepo;
 use crate::repos::auth_repo::DBAuthRepo;
 use crate::repos::browsertrix_repo::{BrowsertrixRepo, HTTPBrowsertrixRepo};
 use crate::repos::collections_repo::DBCollectionsRepo;
+use crate::repos::creators_repo::DBCreatorsRepo;
 use crate::repos::emails_repo::PostmarkEmailsRepo;
 use crate::repos::locations_repo::DBLocationsRepo;
 use crate::repos::s3_repo::{DigitalOceanSpacesRepo, S3Repo};
@@ -22,6 +23,7 @@ use crate::repos::subjects_repo::DBSubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
 use crate::services::collections_service::CollectionsService;
+use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
 use reqwest::Client;
@@ -60,6 +62,9 @@ async fn main() {
     let locations_repo = DBLocationsRepo {
         db_session: db_session.clone(),
     };
+    let creators_repo = DBCreatorsRepo {
+        db_session: db_session.clone(),
+    };
     let collections_repo = DBCollectionsRepo {
         db_session: db_session.clone(),
     };
@@ -88,6 +93,9 @@ async fn main() {
     let locations_service = LocationsService {
         locations_repo: Arc::new(locations_repo),
     };
+    let creators_service = CreatorsService {
+        creators_repo: Arc::new(creators_repo),
+    };
     let accessions_service = AccessionsService {
         accessions_repo: Arc::new(accessions_repo),
         auth_repo: Arc::new(auth_repo.clone()),
@@ -113,6 +121,7 @@ async fn main() {
         collections_service,
         subjects_service,
         locations_service,
+        creators_service,
     };
     let app = create_app(app_state, dolly_the_app_config, false);
 

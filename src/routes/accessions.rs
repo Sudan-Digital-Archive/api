@@ -75,6 +75,7 @@ async fn create_accession_raw(
             multipart,
             state.subjects_service.clone(),
             state.locations_service.clone(),
+            state.creators_service.clone(),
         )
         .await
     {
@@ -164,6 +165,30 @@ async fn create_accession_crawl(
             Ok(flag) => {
                 if !flag {
                     return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
+                }
+            }
+        };
+    }
+    let mut creator_ids: Vec<i32> = vec![];
+    if let Some(en_id) = payload.metadata_creator_en_id {
+        creator_ids.push(en_id);
+    }
+    if let Some(ar_id) = payload.metadata_creator_ar_id {
+        creator_ids.push(ar_id);
+    }
+    if !creator_ids.is_empty() {
+        let creators_exist = state
+            .creators_service
+            .clone()
+            .verify_creators_exist(creator_ids, payload.metadata_language)
+            .await;
+        match creators_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Creators do not exist").into_response();
                 }
             }
         };
@@ -375,6 +400,30 @@ async fn update_accession(
             }
         };
     }
+    let mut creator_ids: Vec<i32> = vec![];
+    if let Some(en_id) = payload.metadata_creator_en_id {
+        creator_ids.push(en_id);
+    }
+    if let Some(ar_id) = payload.metadata_creator_ar_id {
+        creator_ids.push(ar_id);
+    }
+    if !creator_ids.is_empty() {
+        let creators_exist = state
+            .creators_service
+            .clone()
+            .verify_creators_exist(creator_ids, payload.metadata_language)
+            .await;
+        match creators_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Creators do not exist").into_response();
+                }
+            }
+        };
+    }
     state.accessions_service.update_one(id, payload).await
 }
 
@@ -459,6 +508,8 @@ mod tests {
                     send_email_notification: true,
                     metadata_location_en_id: None,
                     metadata_location_ar_id: None,
+                    metadata_creator_en_id: None,
+                    metadata_creator_ar_id: None,
                 },
                 Uuid::new_v4(),
             )
@@ -484,6 +535,8 @@ mod tests {
                     send_email_notification: true,
                     metadata_location_en_id: None,
                     metadata_location_ar_id: None,
+                    metadata_creator_en_id: None,
+                    metadata_creator_ar_id: None,
                 },
                 Uuid::new_v4(),
             )

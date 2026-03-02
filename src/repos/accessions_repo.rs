@@ -129,6 +129,8 @@ struct CreateAccessionData {
     s3_filename: Option<String>,
     metadata_location_en_id: Option<i32>,
     metadata_location_ar_id: Option<i32>,
+    metadata_creator_en_id: Option<i32>,
+    metadata_creator_ar_id: Option<i32>,
 }
 
 impl DBAccessionsRepo {
@@ -148,6 +150,7 @@ impl DBAccessionsRepo {
                     title: ActiveValue::Set(accession_data.metadata_title),
                     description: ActiveValue::Set(accession_data.metadata_description),
                     location_en_id: ActiveValue::Set(accession_data.metadata_location_en_id),
+                    creator_en_id: ActiveValue::Set(accession_data.metadata_creator_en_id),
                 };
                 let inserted_metadata = metadata.save(&txn).await?;
                 let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -170,6 +173,7 @@ impl DBAccessionsRepo {
                     title: ActiveValue::Set(accession_data.metadata_title),
                     description: ActiveValue::Set(accession_data.metadata_description),
                     location_ar_id: ActiveValue::Set(accession_data.metadata_location_ar_id),
+                    creator_ar_id: ActiveValue::Set(accession_data.metadata_creator_ar_id),
                 };
                 let inserted_metadata = metadata.save(&txn).await?;
                 let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -237,6 +241,8 @@ impl AccessionsRepo for DBAccessionsRepo {
             s3_filename: create_accession_request.s3_filename,
             metadata_location_en_id: create_accession_request.metadata_location_en_id,
             metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
+            metadata_creator_en_id: create_accession_request.metadata_creator_en_id,
+            metadata_creator_ar_id: create_accession_request.metadata_creator_ar_id,
         };
         self._create_one(accession_data).await
     }
@@ -261,6 +267,8 @@ impl AccessionsRepo for DBAccessionsRepo {
             s3_filename: Some(create_accession_request.s3_filename),
             metadata_location_en_id: create_accession_request.metadata_location_en_id,
             metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
+            metadata_creator_en_id: create_accession_request.metadata_creator_en_id,
+            metadata_creator_ar_id: create_accession_request.metadata_creator_ar_id,
         };
         self._create_one(accession_data).await
     }
@@ -369,6 +377,7 @@ impl AccessionsRepo for DBAccessionsRepo {
 
                 match update_accession_request.metadata_language {
                     MetadataLanguage::English => {
+                        let creator_en_id = update_accession_request.metadata_creator_en_id;
                         let metadata = DublinMetadataEnActiveModel {
                             id: match accession.dublin_metadata_en {
                                 Some(id) => ActiveValue::Set(id),
@@ -379,6 +388,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                                 update_accession_request.metadata_description,
                             ),
                             location_en_id: ActiveValue::Set(location_en_id),
+                            creator_en_id: ActiveValue::Set(creator_en_id),
                         };
                         let inserted_metadata = metadata.save(&txn).await?;
                         let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -400,6 +410,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                         accession_active.dublin_metadata_en = ActiveValue::Set(Some(metadata_id));
                     }
                     MetadataLanguage::Arabic => {
+                        let creator_ar_id = update_accession_request.metadata_creator_ar_id;
                         let metadata = DublinMetadataArActiveModel {
                             id: match accession.dublin_metadata_ar {
                                 Some(id) => ActiveValue::Set(id),
@@ -410,6 +421,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                                 update_accession_request.metadata_description,
                             ),
                             location_ar_id: ActiveValue::Set(location_ar_id),
+                            creator_ar_id: ActiveValue::Set(creator_ar_id),
                         };
                         let inserted_metadata = metadata.save(&txn).await?;
                         let metadata_id = inserted_metadata.try_into_model()?.id;
