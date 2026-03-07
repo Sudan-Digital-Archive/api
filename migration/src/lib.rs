@@ -18,6 +18,7 @@ mod m20260302_223732_fix_is_private_removal;
 mod m20260302_224258_fix_metadata_format_removal;
 mod m20260302_224611_fix_s3_filename_removal;
 mod m20260304_195826_fix_full_text;
+mod m20260304_195900_add_contributor_tables;
 
 pub struct Migrator;
 
@@ -44,6 +45,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260302_224258_fix_metadata_format_removal::Migration),
             Box::new(m20260302_224611_fix_s3_filename_removal::Migration),
             Box::new(m20260304_195826_fix_full_text::Migration),
+            Box::new(m20260304_195900_add_contributor_tables::Migration),
         ]
     }
 }

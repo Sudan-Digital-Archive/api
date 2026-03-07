@@ -520,3 +520,119 @@ impl Default for CreatorLangParam {
         }
     }
 }
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct CreateContributorRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub contributor: String,
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateContributorRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub contributor: String,
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct DeleteContributorRequest {
+    pub lang: MetadataLanguage,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct ContributorPagination {
+    #[schema(default = 0)]
+    pub page: u64,
+    #[validate(range(min = 1, max = 200))]
+    #[schema(default = 20, minimum = 1, maximum = 200)]
+    pub per_page: u64,
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 500))]
+    pub query_term: Option<String>,
+}
+
+impl Default for ContributorPagination {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            per_page: 20,
+            lang: MetadataLanguage::English,
+            query_term: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct ContributorLangParam {
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for ContributorLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct CreateContributorRoleRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub role: String,
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct UpdateContributorRoleRequest {
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 200))]
+    pub role: String,
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
+pub struct DeleteContributorRoleRequest {
+    pub lang: MetadataLanguage,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct ContributorRolePagination {
+    #[schema(default = 0)]
+    pub page: u64,
+    #[validate(range(min = 1, max = 200))]
+    #[schema(default = 20, minimum = 1, maximum = 200)]
+    pub per_page: u64,
+    pub lang: MetadataLanguage,
+    #[validate(length(min = 1, max = 500))]
+    pub query_term: Option<String>,
+}
+
+impl Default for ContributorRolePagination {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            per_page: 20,
+            lang: MetadataLanguage::English,
+            query_term: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Validate, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct ContributorRoleLangParam {
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for ContributorRoleLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}

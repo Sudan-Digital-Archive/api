@@ -24,6 +24,8 @@ pub struct Model {
     pub location_en: Option<String>,
     pub subjects_en: Option<Vec<String>>,
     pub subjects_en_ids: Option<Vec<i32>>,
+    pub contributors_en: Option<Vec<String>>,
+    pub contributor_roles_en: Option<Vec<String>>,
     pub title_ar: Option<String>,
     pub description_ar: Option<String>,
     pub creator_ar_id: Option<i32>,
@@ -31,6 +33,8 @@ pub struct Model {
     pub location_ar: Option<String>,
     pub subjects_ar: Option<Vec<String>>,
     pub subjects_ar_ids: Option<Vec<i32>>,
+    pub contributors_ar: Option<Vec<String>>,
+    pub contributor_roles_ar: Option<Vec<String>>,
     pub has_english_metadata: bool,
     pub has_arabic_metadata: bool,
 }
