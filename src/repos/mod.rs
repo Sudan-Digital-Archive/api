@@ -2,6 +2,8 @@ pub mod accessions_repo;
 pub mod auth_repo;
 pub mod browsertrix_repo;
 pub mod collections_repo;
+pub mod contributor_roles_repo;
+pub mod contributors_repo;
 pub mod creators_repo;
 pub mod emails_repo;
 mod filter_builder;

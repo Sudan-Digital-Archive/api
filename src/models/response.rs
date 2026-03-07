@@ -259,3 +259,53 @@ pub struct ListCreatorsResponse {
     pub page: u64,
     pub per_page: u64,
 }
+
+/// Response containing a single contributor.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct ContributorResponse {
+    pub id: i32,
+    pub contributor: String,
+}
+
+/// Response for listing English contributors with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListContributorsEnResponse {
+    pub items: Vec<ContributorResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}
+
+/// Response for listing Arabic contributors with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListContributorsArResponse {
+    pub items: Vec<ContributorResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}
+
+/// Response containing a single contributor role.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct ContributorRoleResponse {
+    pub id: i32,
+    pub role: String,
+}
+
+/// Response for listing English contributor roles with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListContributorRolesEnResponse {
+    pub items: Vec<ContributorRoleResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}
+
+/// Response for listing Arabic contributor roles with pagination.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, ToSchema)]
+pub struct ListContributorRolesArResponse {
+    pub items: Vec<ContributorRoleResponse>,
+    pub num_pages: u64,
+    pub page: u64,
+    pub per_page: u64,
+}

@@ -144,7 +144,10 @@ impl MigrationTrait for Migration {
                                 DublinMetadataEnContributors::Table,
                                 DublinMetadataEnContributors::ContributorId,
                             )
-                            .to(DublinMetadataContributorEn::Table, DublinMetadataContributorEn::Id),
+                            .to(
+                                DublinMetadataContributorEn::Table,
+                                DublinMetadataContributorEn::Id,
+                            ),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -153,7 +156,10 @@ impl MigrationTrait for Migration {
                                 DublinMetadataEnContributors::Table,
                                 DublinMetadataEnContributors::RoleId,
                             )
-                            .to(DublinMetadataContributorRoleEn::Table, DublinMetadataContributorRoleEn::Id),
+                            .to(
+                                DublinMetadataContributorRoleEn::Table,
+                                DublinMetadataContributorRoleEn::Id,
+                            ),
                     )
                     .to_owned(),
             )
@@ -200,7 +206,10 @@ impl MigrationTrait for Migration {
                                 DublinMetadataArContributors::Table,
                                 DublinMetadataArContributors::ContributorId,
                             )
-                            .to(DublinMetadataContributorAr::Table, DublinMetadataContributorAr::Id),
+                            .to(
+                                DublinMetadataContributorAr::Table,
+                                DublinMetadataContributorAr::Id,
+                            ),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -209,7 +218,10 @@ impl MigrationTrait for Migration {
                                 DublinMetadataArContributors::Table,
                                 DublinMetadataArContributors::RoleId,
                             )
-                            .to(DublinMetadataContributorRoleAr::Table, DublinMetadataContributorRoleAr::Id),
+                            .to(
+                                DublinMetadataContributorRoleAr::Table,
+                                DublinMetadataContributorRoleAr::Id,
+                            ),
                     )
                     .to_owned(),
             )
@@ -331,22 +343,46 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
-            .drop_table(Table::drop().table(DublinMetadataEnContributors::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(DublinMetadataEnContributors::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_table(Table::drop().table(DublinMetadataArContributors::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(DublinMetadataArContributors::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_table(Table::drop().table(DublinMetadataContributorRoleEn::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(DublinMetadataContributorRoleEn::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_table(Table::drop().table(DublinMetadataContributorRoleAr::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(DublinMetadataContributorRoleAr::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_table(Table::drop().table(DublinMetadataContributorEn::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(DublinMetadataContributorEn::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_table(Table::drop().table(DublinMetadataContributorAr::Table).to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(DublinMetadataContributorAr::Table)
+                    .to_owned(),
+            )
             .await?;
 
         Ok(())
