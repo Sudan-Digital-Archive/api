@@ -795,6 +795,10 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         is_private: true,
         dublin_metadata_format: DublinMetadataFormat::Wacz,
         s3_filename: Some("some_file.wacz".to_string()),
+        contributors_en: Some(vec!["Paul McCartney".to_string()]),
+        contributor_roles_en: Some(vec!["singer".to_string()]),
+        contributors_ar: Some(vec!["بول ماك كارتني".to_string()]),
+        contributor_roles_ar: Some(vec!["مغني".to_string()]),
     }
 }
 
