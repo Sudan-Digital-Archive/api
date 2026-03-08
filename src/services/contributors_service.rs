@@ -6,8 +6,8 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateContributorRequest, UpdateContributorRequest};
 use crate::models::response::{
-    ListContributorRolesArResponse, ListContributorRolesEnResponse, ListContributorsArResponse,
-    ListContributorsEnResponse,
+    ContributorResponse, ContributorRoleResponse, ListContributorRolesArResponse,
+    ListContributorRolesEnResponse, ListContributorsArResponse, ListContributorsEnResponse,
 };
 use crate::repos::contributor_roles_repo::ContributorRolesRepo;
 use crate::repos::contributors_repo::ContributorsRepo;
@@ -92,7 +92,7 @@ impl ContributorsService {
                             items: rows
                                 .0
                                 .into_iter()
-                                .map(|c| crate::models::response::ContributorResponse {
+                                .map(|c| ContributorResponse {
                                     id: c.id,
                                     contributor: c.contributor,
                                 })
@@ -121,7 +121,7 @@ impl ContributorsService {
                             items: rows
                                 .0
                                 .into_iter()
-                                .map(|c| crate::models::response::ContributorResponse {
+                                .map(|c| ContributorResponse {
                                     id: c.id,
                                     contributor: c.contributor,
                                 })
@@ -301,7 +301,7 @@ impl ContributorsService {
                             items: rows
                                 .0
                                 .into_iter()
-                                .map(|r| crate::models::response::ContributorRoleResponse {
+                                .map(|r| ContributorRoleResponse {
                                     id: r.id,
                                     role: r.role,
                                 })
@@ -330,7 +330,7 @@ impl ContributorsService {
                             items: rows
                                 .0
                                 .into_iter()
-                                .map(|r| crate::models::response::ContributorRoleResponse {
+                                .map(|r| ContributorRoleResponse {
                                     id: r.id,
                                     role: r.role,
                                 })

@@ -337,3 +337,433 @@ async fn update_role(
     }
     state.contributors_service.update_role(id, payload).await
 }
+
+#[cfg(test)]
+mod tests {
+
+    use crate::models::response::{
+        ContributorResponse, ContributorRoleResponse, ListContributorsArResponse,
+        ListContributorsEnResponse, ListContributorRolesArResponse, ListContributorRolesEnResponse,
+    };
+    use crate::test_tools::{build_test_app, get_mock_jwt};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use http_body_util::BodyExt;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn create_one_contributor_no_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/contributors")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "contributor": "Test Contributor"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn create_one_contributor_en() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/contributors")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "contributor": "Test Contributor"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ContributorResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.contributor, "Test Contributor".to_string());
+    }
+
+    #[tokio::test]
+    async fn create_one_contributor_ar() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/contributors")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "arabic",
+                            "contributor": "مختبر"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ContributorResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.contributor, "مختبر".to_string());
+    }
+
+    #[tokio::test]
+    async fn list_contributors_en() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/contributors?page=0&per_page=1&lang=english")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ListContributorsEnResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.num_pages, 10);
+        assert_eq!(actual.items.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn list_contributors_ar() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/contributors?page=0&per_page=1&lang=arabic")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ListContributorsArResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.num_pages, 10);
+        assert_eq!(actual.items.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn delete_one_contributor_no_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::DELETE)
+                    .uri("/api/v1/contributors/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "arabic",
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn delete_one_contributor_with_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::DELETE)
+                    .uri("/api/v1/contributors/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn update_one_contributor_no_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/api/v1/contributors/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "contributor": "updated contributor"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn update_one_contributor_with_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/api/v1/contributors/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "contributor": "updated contributor"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ContributorResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.contributor, "updated contributor".to_string());
+        assert_eq!(actual.id, 1);
+    }
+
+    #[tokio::test]
+    async fn create_one_role_no_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/contributors/roles")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "role": "Photographer"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn create_one_role_en() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/contributors/roles")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "role": "Photographer"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ContributorRoleResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.role, "Photographer".to_string());
+    }
+
+    #[tokio::test]
+    async fn list_roles_en() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/contributors/roles?page=0&per_page=1&lang=english")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ListContributorRolesEnResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.num_pages, 10);
+        assert_eq!(actual.items.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn list_roles_ar() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/contributors/roles?page=0&per_page=1&lang=arabic")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ListContributorRolesArResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.num_pages, 10);
+        assert_eq!(actual.items.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn delete_one_role_no_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::DELETE)
+                    .uri("/api/v1/contributors/roles/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "arabic",
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn delete_one_role_with_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::DELETE)
+                    .uri("/api/v1/contributors/roles/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn update_one_role_no_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/api/v1/contributors/roles/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "role": "updated role"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn update_one_role_with_auth() {
+        let app = build_test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/api/v1/contributors/roles/1")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "lang": "english",
+                            "role": "updated role"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: ContributorRoleResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.role, "updated role".to_string());
+        assert_eq!(actual.id, 1);
+    }
+}

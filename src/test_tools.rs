@@ -427,11 +427,11 @@ pub struct InMemoryContributorsRepo {}
 impl ContributorsRepo for InMemoryContributorsRepo {
     async fn write_one(
         &self,
-        _create_contributor_request: crate::models::request::CreateContributorRequest,
+        create_contributor_request: crate::models::request::CreateContributorRequest,
     ) -> Result<crate::models::response::ContributorResponse, DbErr> {
         Ok(crate::models::response::ContributorResponse {
             id: 1,
-            contributor: "Test Contributor".to_string(),
+            contributor: create_contributor_request.contributor,
         })
     }
 
@@ -476,11 +476,11 @@ impl ContributorsRepo for InMemoryContributorsRepo {
     async fn update_one(
         &self,
         _contributor_id: i32,
-        _update_contributor_request: crate::models::request::UpdateContributorRequest,
+        update_contributor_request: crate::models::request::UpdateContributorRequest,
     ) -> Result<Option<crate::models::response::ContributorResponse>, DbErr> {
         Ok(Some(crate::models::response::ContributorResponse {
             id: 1,
-            contributor: "Updated Contributor".to_string(),
+            contributor: update_contributor_request.contributor,
         }))
     }
 
@@ -511,11 +511,11 @@ pub struct InMemoryContributorRolesRepo {}
 impl ContributorRolesRepo for InMemoryContributorRolesRepo {
     async fn write_one(
         &self,
-        _create_role_request: crate::models::request::CreateContributorRoleRequest,
+        create_role_request: crate::models::request::CreateContributorRoleRequest,
     ) -> Result<crate::models::response::ContributorRoleResponse, DbErr> {
         Ok(crate::models::response::ContributorRoleResponse {
             id: 1,
-            role: "Test Role".to_string(),
+            role: create_role_request.role,
         })
     }
 
@@ -560,11 +560,11 @@ impl ContributorRolesRepo for InMemoryContributorRolesRepo {
     async fn update_one(
         &self,
         _role_id: i32,
-        _update_role_request: crate::models::request::UpdateContributorRoleRequest,
+        update_role_request: crate::models::request::UpdateContributorRoleRequest,
     ) -> Result<Option<crate::models::response::ContributorRoleResponse>, DbErr> {
         Ok(Some(crate::models::response::ContributorRoleResponse {
             id: 1,
-            role: "Updated Role".to_string(),
+            role: update_role_request.role,
         }))
     }
 
