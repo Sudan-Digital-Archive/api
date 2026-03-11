@@ -342,8 +342,8 @@ async fn update_role(
 mod tests {
 
     use crate::models::response::{
-        ContributorResponse, ContributorRoleResponse, ListContributorsArResponse,
-        ListContributorsEnResponse, ListContributorRolesArResponse, ListContributorRolesEnResponse,
+        ContributorResponse, ContributorRoleResponse, ListContributorRolesArResponse,
+        ListContributorRolesEnResponse, ListContributorsArResponse, ListContributorsEnResponse,
     };
     use crate::test_tools::{build_test_app, get_mock_jwt};
     use axum::{
