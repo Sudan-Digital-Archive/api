@@ -234,6 +234,7 @@ impl MigrationTrait for Migration {
         db.execute_unprepared(
             r#"
             CREATE OR REPLACE VIEW accessions_with_metadata AS
+            SELECT
                 a.id,
                 a.is_private,
                 a.crawl_status,
