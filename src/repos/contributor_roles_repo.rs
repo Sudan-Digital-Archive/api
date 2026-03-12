@@ -1,0 +1,308 @@
+//! Repository module for managing contributor role metadata in the digital archive.
+//!
+//! This module provides functionality for creating and listing contributor role terms
+//! that can be used to describe roles of contributors to archived content in both Arabic and English.
+
+use crate::models::common::MetadataLanguage;
+use crate::models::request::{CreateContributorRoleRequest, UpdateContributorRoleRequest};
+use crate::models::response::ContributorRoleResponse;
+use ::entity::dublin_metadata_contributor_role_ar::ActiveModel as DublinMetadataContributorRoleArActiveModel;
+use ::entity::dublin_metadata_contributor_role_ar::Entity as DublinMetadataContributorRoleAr;
+use ::entity::dublin_metadata_contributor_role_ar::Model as DublinMetadataContributorRoleArModel;
+use ::entity::dublin_metadata_contributor_role_en::ActiveModel as DublinMetadataContributorRoleEnActiveModel;
+use ::entity::dublin_metadata_contributor_role_en::Entity as DublinMetadataContributorRoleEn;
+use ::entity::dublin_metadata_contributor_role_en::Model as DublinMetadataContributorRoleEnModel;
+use async_trait::async_trait;
+use entity::{dublin_metadata_contributor_role_ar, dublin_metadata_contributor_role_en};
+use sea_orm::prelude::Expr;
+use sea_orm::sea_query::{ExprTrait, Func};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
+    IntoActiveModel, PaginatorTrait, QueryFilter,
+};
+
+/// Repository implementation for database operations on contributor roles.
+#[derive(Debug, Clone, Default)]
+pub struct DBContributorRolesRepo {
+    pub db_session: DatabaseConnection,
+}
+
+/// Defines the interface for contributor role-related database operations.
+///
+/// This trait provides methods for creating and retrieving contributor role terms
+/// that can be used to describe roles of contributors to archived content in both Arabic and English.
+#[async_trait]
+pub trait ContributorRolesRepo: Send + Sync {
+    /// Creates a new contributor role term in the specified language.
+    ///
+    /// # Arguments
+    /// * `create_role_request` - The request containing role details and language
+    async fn write_one(
+        &self,
+        create_role_request: CreateContributorRoleRequest,
+    ) -> Result<ContributorRoleResponse, DbErr>;
+
+    /// Lists Arabic contributor role terms with pagination and optional text search.
+    ///
+    /// # Arguments
+    /// * `page` - The page number to retrieve
+    /// * `per_page` - Number of records per page
+    /// * `query_term` - Optional text search term
+    async fn list_paginated_ar(
+        &self,
+        page: u64,
+        per_page: u64,
+        query_term: Option<String>,
+    ) -> Result<(Vec<DublinMetadataContributorRoleArModel>, u64), DbErr>;
+
+    /// Lists English contributor role terms with pagination and optional text search.
+    ///
+    /// # Arguments
+    /// * `page` - The page number to retrieve
+    /// * `per_page` - Number of records per page
+    /// * `query_term` - Optional text search term
+    async fn list_paginated_en(
+        &self,
+        page: u64,
+        per_page: u64,
+        query_term: Option<String>,
+    ) -> Result<(Vec<DublinMetadataContributorRoleEnModel>, u64), DbErr>;
+
+    /// Verifies that all provided contributor role IDs exist in the database.
+    ///
+    /// # Arguments
+    /// * `role_ids` - List of contributor role IDs to verify
+    /// * `metadata_language` - Language of the roles to check
+    async fn verify_roles_exist(
+        &self,
+        role_ids: Vec<i32>,
+        metadata_language: MetadataLanguage,
+    ) -> Result<bool, DbErr>;
+
+    /// Updates a contributor role term by its ID.
+    ///
+    /// # Arguments
+    /// * `role_id` - The ID of the role to update.
+    /// * `update_role_request` - The update request containing new role text and language
+    async fn update_one(
+        &self,
+        role_id: i32,
+        update_role_request: UpdateContributorRoleRequest,
+    ) -> Result<Option<ContributorRoleResponse>, DbErr>;
+
+    /// Deletes a contributor role term by its ID.
+    ///
+    /// # Arguments
+    /// * `role_id` - The ID of the role to delete.
+    /// * `metadata_language` - Language of the role to delete
+    async fn delete_one(
+        &self,
+        role_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<()>, DbErr>;
+
+    /// Retrieves a single contributor role term by its ID.
+    ///
+    /// # Arguments
+    /// * `role_id` - The ID of the role to retrieve.
+    /// * `metadata_language` - Language of the role to retrieve
+    async fn get_one(
+        &self,
+        role_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<ContributorRoleResponse>, DbErr>;
+}
+
+#[async_trait]
+impl ContributorRolesRepo for DBContributorRolesRepo {
+    async fn write_one(
+        &self,
+        create_role_request: CreateContributorRoleRequest,
+    ) -> Result<ContributorRoleResponse, DbErr> {
+        let resp = match create_role_request.lang {
+            MetadataLanguage::English => {
+                let role = DublinMetadataContributorRoleEnActiveModel {
+                    id: Default::default(),
+                    role: ActiveValue::Set(create_role_request.role),
+                };
+                let new_role = role.insert(&self.db_session).await?;
+                ContributorRoleResponse {
+                    id: new_role.id,
+                    role: new_role.role,
+                }
+            }
+            MetadataLanguage::Arabic => {
+                let role = DublinMetadataContributorRoleArActiveModel {
+                    id: Default::default(),
+                    role: ActiveValue::Set(create_role_request.role),
+                };
+                let new_role = role.insert(&self.db_session).await?;
+                ContributorRoleResponse {
+                    id: new_role.id,
+                    role: new_role.role,
+                }
+            }
+        };
+        Ok(resp)
+    }
+
+    async fn list_paginated_ar(
+        &self,
+        page: u64,
+        per_page: u64,
+        query_term: Option<String>,
+    ) -> Result<(Vec<DublinMetadataContributorRoleArModel>, u64), DbErr> {
+        let mut query = DublinMetadataContributorRoleAr::find();
+
+        if let Some(term) = query_term {
+            let query_string = format!("%{}%", term.to_lowercase());
+            let query_filter =
+                Func::lower(Expr::col(dublin_metadata_contributor_role_ar::Column::Role))
+                    .like(&query_string);
+            query = query.filter(query_filter);
+        }
+
+        let role_pages = query.paginate(&self.db_session, per_page);
+        let num_pages = role_pages.num_pages().await?;
+        Ok((role_pages.fetch_page(page).await?, num_pages))
+    }
+
+    async fn list_paginated_en(
+        &self,
+        page: u64,
+        per_page: u64,
+        query_term: Option<String>,
+    ) -> Result<(Vec<DublinMetadataContributorRoleEnModel>, u64), DbErr> {
+        let mut query = DublinMetadataContributorRoleEn::find();
+
+        if let Some(term) = query_term {
+            let query_string = format!("%{}%", term.to_lowercase());
+            let query_filter =
+                Func::lower(Expr::col(dublin_metadata_contributor_role_en::Column::Role))
+                    .like(&query_string);
+            query = query.filter(query_filter);
+        }
+
+        let role_pages = query.paginate(&self.db_session, per_page);
+        let num_pages = role_pages.num_pages().await?;
+        Ok((role_pages.fetch_page(page).await?, num_pages))
+    }
+
+    async fn verify_roles_exist(
+        &self,
+        role_ids: Vec<i32>,
+        metadata_language: MetadataLanguage,
+    ) -> Result<bool, DbErr> {
+        let flag = match metadata_language {
+            MetadataLanguage::English => {
+                let rows = DublinMetadataContributorRoleEn::find()
+                    .filter(dublin_metadata_contributor_role_en::Column::Id.is_in(role_ids.clone()))
+                    .all(&self.db_session)
+                    .await?;
+                rows.len() == role_ids.len()
+            }
+            MetadataLanguage::Arabic => {
+                let rows = DublinMetadataContributorRoleAr::find()
+                    .filter(dublin_metadata_contributor_role_ar::Column::Id.is_in(role_ids.clone()))
+                    .all(&self.db_session)
+                    .await?;
+                rows.len() == role_ids.len()
+            }
+        };
+        Ok(flag)
+    }
+
+    async fn update_one(
+        &self,
+        role_id: i32,
+        update_role_request: UpdateContributorRoleRequest,
+    ) -> Result<Option<ContributorRoleResponse>, DbErr> {
+        let result = match update_role_request.lang {
+            MetadataLanguage::English => {
+                let role = DublinMetadataContributorRoleEn::find_by_id(role_id)
+                    .one(&self.db_session)
+                    .await?;
+                if let Some(existing_role) = role {
+                    let mut active_role = existing_role.into_active_model();
+                    active_role.role = ActiveValue::Set(update_role_request.role);
+                    let updated_role = active_role.update(&self.db_session).await?;
+                    Some(ContributorRoleResponse {
+                        id: updated_role.id,
+                        role: updated_role.role,
+                    })
+                } else {
+                    None
+                }
+            }
+            MetadataLanguage::Arabic => {
+                let role = DublinMetadataContributorRoleAr::find_by_id(role_id)
+                    .one(&self.db_session)
+                    .await?;
+                if let Some(existing_role) = role {
+                    let mut active_role = existing_role.into_active_model();
+                    active_role.role = ActiveValue::Set(update_role_request.role);
+                    let updated_role = active_role.update(&self.db_session).await?;
+                    Some(ContributorRoleResponse {
+                        id: updated_role.id,
+                        role: updated_role.role,
+                    })
+                } else {
+                    None
+                }
+            }
+        };
+        Ok(result)
+    }
+
+    async fn delete_one(
+        &self,
+        role_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<()>, DbErr> {
+        let deletion = match metadata_language {
+            MetadataLanguage::English => {
+                DublinMetadataContributorRoleEn::delete_by_id(role_id)
+                    .exec(&self.db_session)
+                    .await?
+            }
+            MetadataLanguage::Arabic => {
+                DublinMetadataContributorRoleAr::delete_by_id(role_id)
+                    .exec(&self.db_session)
+                    .await?
+            }
+        };
+        if deletion.rows_affected > 0 {
+            Ok(Some(()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn get_one(
+        &self,
+        role_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<ContributorRoleResponse>, DbErr> {
+        let result = match metadata_language {
+            MetadataLanguage::English => {
+                let role = DublinMetadataContributorRoleEn::find_by_id(role_id)
+                    .one(&self.db_session)
+                    .await?;
+                role.map(|r| ContributorRoleResponse {
+                    id: r.id,
+                    role: r.role,
+                })
+            }
+            MetadataLanguage::Arabic => {
+                let role = DublinMetadataContributorRoleAr::find_by_id(role_id)
+                    .one(&self.db_session)
+                    .await?;
+                role.map(|r| ContributorRoleResponse {
+                    id: r.id,
+                    role: r.role,
+                })
+            }
+        };
+        Ok(result)
+    }
+}

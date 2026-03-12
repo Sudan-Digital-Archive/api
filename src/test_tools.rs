@@ -16,6 +16,8 @@ use crate::repos::accessions_repo::AccessionsRepo;
 use crate::repos::auth_repo::{ApiKeyUserInfo, AuthRepo};
 use crate::repos::browsertrix_repo::{BrowsertrixError, BrowsertrixRepo};
 use crate::repos::collections_repo::{CollectionWithSubjects, CollectionsRepo};
+use crate::repos::contributor_roles_repo::ContributorRolesRepo;
+use crate::repos::contributors_repo::ContributorsRepo;
 use crate::repos::creators_repo::CreatorsRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::locations_repo::LocationsRepo;
@@ -24,6 +26,7 @@ use crate::repos::subjects_repo::SubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
 use crate::services::collections_service::CollectionsService;
+use crate::services::contributors_service::ContributorsService;
 use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
@@ -417,6 +420,174 @@ impl CreatorsRepo for InMemoryCreatorsRepo {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct InMemoryContributorsRepo {}
+
+#[async_trait]
+impl ContributorsRepo for InMemoryContributorsRepo {
+    async fn write_one(
+        &self,
+        create_contributor_request: crate::models::request::CreateContributorRequest,
+    ) -> Result<crate::models::response::ContributorResponse, DbErr> {
+        Ok(crate::models::response::ContributorResponse {
+            id: 1,
+            contributor: create_contributor_request.contributor,
+        })
+    }
+
+    async fn list_paginated_ar(
+        &self,
+        _page: u64,
+        _per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_contributor_ar::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_contributor_ar::Model {
+                id: 1,
+                contributor: "مختبر".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn list_paginated_en(
+        &self,
+        _page: u64,
+        _per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_contributor_en::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_contributor_en::Model {
+                id: 1,
+                contributor: "Test Contributor".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn verify_contributors_exist(
+        &self,
+        _contributor_ids: Vec<i32>,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<bool, DbErr> {
+        Ok(true)
+    }
+
+    async fn update_one(
+        &self,
+        _contributor_id: i32,
+        update_contributor_request: crate::models::request::UpdateContributorRequest,
+    ) -> Result<Option<crate::models::response::ContributorResponse>, DbErr> {
+        Ok(Some(crate::models::response::ContributorResponse {
+            id: 1,
+            contributor: update_contributor_request.contributor,
+        }))
+    }
+
+    async fn delete_one(
+        &self,
+        _contributor_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<()>, DbErr> {
+        Ok(Some(()))
+    }
+
+    async fn get_one(
+        &self,
+        _contributor_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<crate::models::response::ContributorResponse>, DbErr> {
+        Ok(Some(crate::models::response::ContributorResponse {
+            id: 1,
+            contributor: "Test Contributor".to_string(),
+        }))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct InMemoryContributorRolesRepo {}
+
+#[async_trait]
+impl ContributorRolesRepo for InMemoryContributorRolesRepo {
+    async fn write_one(
+        &self,
+        create_role_request: crate::models::request::CreateContributorRoleRequest,
+    ) -> Result<crate::models::response::ContributorRoleResponse, DbErr> {
+        Ok(crate::models::response::ContributorRoleResponse {
+            id: 1,
+            role: create_role_request.role,
+        })
+    }
+
+    async fn list_paginated_ar(
+        &self,
+        _page: u64,
+        _per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_contributor_role_ar::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_contributor_role_ar::Model {
+                id: 1,
+                role: "مختبر دور".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn list_paginated_en(
+        &self,
+        _page: u64,
+        _per_page: u64,
+        _query_term: Option<String>,
+    ) -> Result<(Vec<entity::dublin_metadata_contributor_role_en::Model>, u64), DbErr> {
+        Ok((
+            vec![entity::dublin_metadata_contributor_role_en::Model {
+                id: 1,
+                role: "Test Role".to_string(),
+            }],
+            10,
+        ))
+    }
+
+    async fn verify_roles_exist(
+        &self,
+        _role_ids: Vec<i32>,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<bool, DbErr> {
+        Ok(true)
+    }
+
+    async fn update_one(
+        &self,
+        _role_id: i32,
+        update_role_request: crate::models::request::UpdateContributorRoleRequest,
+    ) -> Result<Option<crate::models::response::ContributorRoleResponse>, DbErr> {
+        Ok(Some(crate::models::response::ContributorRoleResponse {
+            id: 1,
+            role: update_role_request.role,
+        }))
+    }
+
+    async fn delete_one(
+        &self,
+        _role_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<()>, DbErr> {
+        Ok(Some(()))
+    }
+
+    async fn get_one(
+        &self,
+        _role_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<crate::models::response::ContributorRoleResponse>, DbErr> {
+        Ok(Some(crate::models::response::ContributorRoleResponse {
+            id: 1,
+            role: "Test Role".to_string(),
+        }))
+    }
+}
+
 /// In-memory implementation of EmailsRepo for testing.
 #[derive(Clone, Debug, Default)]
 pub struct InMemoryEmailsRepo {}
@@ -723,6 +894,16 @@ pub fn build_test_creators_service() -> CreatorsService {
     CreatorsService { creators_repo }
 }
 
+/// Builds a test contributors service with in-memory repository.
+pub fn build_test_contributors_service() -> ContributorsService {
+    let contributors_repo = Arc::new(InMemoryContributorsRepo::default());
+    let contributor_roles_repo = Arc::new(InMemoryContributorRolesRepo::default());
+    ContributorsService {
+        contributors_repo,
+        contributor_roles_repo,
+    }
+}
+
 /// Builds a test collections service with in-memory repositories.
 pub fn build_test_collections_service() -> CollectionsService {
     let collections_repo = Arc::new(InMemoryCollectionsRepo::default());
@@ -741,6 +922,7 @@ pub fn build_test_app() -> Router {
     let subjects_service = build_test_subjects_service();
     let locations_service = build_test_locations_service();
     let creators_service = build_test_creators_service();
+    let contributors_service = build_test_contributors_service();
     let auth_service = build_test_auth_service();
     let app_state = AppState {
         accessions_service,
@@ -748,6 +930,7 @@ pub fn build_test_app() -> Router {
         subjects_service,
         locations_service,
         creators_service,
+        contributors_service,
         auth_service,
     };
     let mut app_config = AppConfig::default();
@@ -795,6 +978,10 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         is_private: true,
         dublin_metadata_format: DublinMetadataFormat::Wacz,
         s3_filename: Some("some_file.wacz".to_string()),
+        contributors_en: Some(vec!["Paul McCartney".to_string()]),
+        contributor_roles_en: Some(vec!["singer".to_string()]),
+        contributors_ar: Some(vec!["بول ماك كارتني".to_string()]),
+        contributor_roles_ar: Some(vec!["مغني".to_string()]),
     }
 }
 
