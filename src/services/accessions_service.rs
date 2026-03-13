@@ -850,4 +850,24 @@ impl AccessionsService {
                 .into_response()
         })
     }
+
+    pub async fn get_dublin_metadata_en_id(
+        &self,
+        accession_id: i32,
+    ) -> Result<Option<i32>, Response> {
+        self.accessions_repo
+            .get_dublin_metadata_en_id(accession_id)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())
+    }
+
+    pub async fn get_dublin_metadata_ar_id(
+        &self,
+        accession_id: i32,
+    ) -> Result<Option<i32>, Response> {
+        self.accessions_repo
+            .get_dublin_metadata_ar_id(accession_id)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())
+    }
 }

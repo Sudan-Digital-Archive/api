@@ -5,8 +5,8 @@
 
 use crate::models::common::{BrowserProfile, MetadataLanguage};
 use chrono::NaiveDateTime;
-use entity::sea_orm_active_enums::{DublinMetadataFormat, Role};
-use serde::Deserialize;
+use entity::sea_orm_active_enums::{DublinMetadataFormat, DublinMetadataRelationType, Role};
+use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
@@ -630,6 +630,28 @@ pub struct ContributorRoleLangParam {
 }
 
 impl Default for ContributorRoleLangParam {
+    fn default() -> Self {
+        Self {
+            lang: MetadataLanguage::English,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Validate, Deserialize, Serialize, ToSchema)]
+pub struct CreateRelationRequest {
+    pub relation_type: DublinMetadataRelationType,
+    #[validate(range(min = 1))]
+    pub related_accession_id: i32,
+}
+
+#[derive(Debug, Clone, Deserialize, IntoParams, ToSchema)]
+#[serde(default)]
+pub struct RelationLangParam {
+    #[schema(default = "english")]
+    pub lang: MetadataLanguage,
+}
+
+impl Default for RelationLangParam {
     fn default() -> Self {
         Self {
             lang: MetadataLanguage::English,

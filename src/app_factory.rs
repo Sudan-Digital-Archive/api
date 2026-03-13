@@ -22,6 +22,7 @@ use crate::routes::contributors::get_contributors_routes;
 use crate::routes::creators::get_creators_routes;
 use crate::routes::health::healthcheck;
 use crate::routes::locations::get_locations_routes;
+use crate::routes::relations::get_relations_routes;
 use crate::routes::subjects::get_subjects_routes;
 use crate::services::accessions_service::AccessionsService;
 use crate::services::auth_service::AuthService;
@@ -29,6 +30,7 @@ use crate::services::collections_service::CollectionsService;
 use crate::services::contributors_service::ContributorsService;
 use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
+use crate::services::relations_service::RelationsService;
 use crate::services::subjects_service::SubjectsService;
 use axum::extract::MatchedPath;
 use axum::http::Request;
@@ -57,6 +59,7 @@ pub struct AppState {
     pub locations_service: LocationsService,
     pub creators_service: CreatorsService,
     pub contributors_service: ContributorsService,
+    pub relations_service: RelationsService,
 }
 
 /// Creates and configures the main application router with middleware and routes.
@@ -144,6 +147,7 @@ fn build_routes(api: utoipa::openapi::OpenApi, app_config: AppConfig) -> Router<
     let creators_routes = get_creators_routes();
     let contributors_routes = get_contributors_routes();
     let auth_routes = get_auth_routes();
+    let relations_routes = get_relations_routes();
     let api_prefix = app_config.api_prefix.clone();
     let swagger_ui = SwaggerUi::new("/")
         .url("/openapi.json", api.clone())
@@ -159,7 +163,8 @@ fn build_routes(api: utoipa::openapi::OpenApi, app_config: AppConfig) -> Router<
         .merge(locations_routes)
         .merge(creators_routes)
         .merge(contributors_routes)
-        .merge(auth_routes);
+        .merge(auth_routes)
+        .merge(relations_routes);
     Router::new()
         .nest("/docs/", swagger_ui.into())
         .route(

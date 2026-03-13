@@ -11,6 +11,7 @@ use entity::dublin_metadata_subject_en::Model as DublinMetadataSubjectEnModel;
 use entity::sea_orm_active_enums::DublinMetadataFormat;
 use entity::sea_orm_active_enums::{CrawlStatus, Role};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -31,11 +32,13 @@ pub struct AccessionsWithMetadataResponse {
     pub location_en: Option<String>,
     pub subjects_en: Option<Vec<String>>,
     pub subjects_en_ids: Option<Vec<i32>>,
+    pub relations_en: Option<Value>,
     pub title_ar: Option<String>,
     pub description_ar: Option<String>,
     pub location_ar: Option<String>,
     pub subjects_ar: Option<Vec<String>>,
     pub subjects_ar_ids: Option<Vec<i32>>,
+    pub relations_ar: Option<Value>,
     pub has_english_metadata: bool,
     pub has_arabic_metadata: bool,
 }
@@ -58,11 +61,13 @@ impl From<AccessionsWithMetadataModel> for AccessionsWithMetadataResponse {
             location_en: model.location_en,
             subjects_en: model.subjects_en,
             subjects_en_ids: model.subjects_en_ids,
+            relations_en: model.relations_en,
             title_ar: model.title_ar,
             description_ar: model.description_ar,
             location_ar: model.location_ar,
             subjects_ar: model.subjects_ar,
             subjects_ar_ids: model.subjects_ar_ids,
+            relations_ar: model.relations_ar,
             has_english_metadata: model.has_english_metadata,
             has_arabic_metadata: model.has_arabic_metadata,
         }
@@ -308,4 +313,11 @@ pub struct ListContributorRolesArResponse {
     pub num_pages: u64,
     pub page: u64,
     pub per_page: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
+pub struct RelationResponse {
+    pub id: i32,
+    pub relation_type: String,
+    pub related_accession_id: i32,
 }
