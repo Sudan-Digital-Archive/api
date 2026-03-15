@@ -105,11 +105,11 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
         Ok(Some(mock_one_accession_with_metadata()))
     }
 
-    async fn get_dublin_metadata_en_id(&self, _accession_id: i32) -> Result<Option<i32>, DbErr> {
-        Ok(Some(1))
-    }
-
-    async fn get_dublin_metadata_ar_id(&self, _accession_id: i32) -> Result<Option<i32>, DbErr> {
+    async fn get_dublin_metadata_id(
+        &self,
+        _accession_id: i32,
+        _metadata_language: crate::models::common::MetadataLanguage,
+    ) -> Result<Option<i32>, DbErr> {
         Ok(Some(1))
     }
 }
@@ -214,7 +214,7 @@ impl RelationsRepo for InMemoryRelationsRepo {
         })
     }
 
-    async fn list_for_accession(
+    async fn list(
         &self,
         _metadata_id: i32,
         _metadata_language: MetadataLanguage,

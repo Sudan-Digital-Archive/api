@@ -23,7 +23,7 @@ use entity::sea_orm_active_enums::DublinMetadataRelationType;
 use sea_orm::DatabaseConnection;
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DbErr, EntityTrait, JoinType, QueryFilter,
-    QuerySelect, RelationTrait,
+    QuerySelect, RelationTrait, TransactionTrait,
 };
 use serde_json;
 
@@ -42,7 +42,7 @@ pub trait RelationsRepo: Send + Sync {
         metadata_language: MetadataLanguage,
     ) -> Result<RelationResponse, DbErr>;
 
-    async fn list_for_accession(
+    async fn list(
         &self,
         metadata_id: i32,
         metadata_language: MetadataLanguage,
@@ -76,53 +76,58 @@ impl RelationsRepo for DBRelationsRepo {
         related_accession_id: i32,
         metadata_language: MetadataLanguage,
     ) -> Result<RelationResponse, DbErr> {
-        match metadata_language {
+        let txn = self.db_session.begin().await?;
+        
+        let response = match metadata_language {
             MetadataLanguage::English => {
                 let relation = DublinMetadataRelationEnActiveModel {
                     id: Default::default(),
-                    relation_type: ActiveValue::Set(relation_type.clone()),
+                    relation_type: ActiveValue::Set(relation_type),
                     related_accession_id: ActiveValue::Set(related_accession_id),
                 };
-                let new_relation = relation.insert(&self.db_session).await?;
+                let new_relation = relation.insert(&txn).await?;
 
                 let link = DublinMetadataEnRelationsActiveModel {
                     metadata_id: ActiveValue::Set(metadata_id),
                     relation_id: ActiveValue::Set(new_relation.id),
                 };
-                link.insert(&self.db_session).await?;
+                link.insert(&txn).await?;
 
-                Ok(RelationResponse {
+                RelationResponse {
                     id: new_relation.id,
                     relation_type: serde_json::to_string(&new_relation.relation_type)
                         .unwrap_or_default(),
                     related_accession_id: new_relation.related_accession_id,
-                })
+                }
             }
             MetadataLanguage::Arabic => {
                 let relation = DublinMetadataRelationArActiveModel {
                     id: Default::default(),
-                    relation_type: ActiveValue::Set(relation_type.clone()),
+                    relation_type: ActiveValue::Set(relation_type),
                     related_accession_id: ActiveValue::Set(related_accession_id),
                 };
-                let new_relation = relation.insert(&self.db_session).await?;
+                let new_relation = relation.insert(&txn).await?;
 
                 let link = DublinMetadataArRelationsActiveModel {
                     metadata_id: ActiveValue::Set(metadata_id),
                     relation_id: ActiveValue::Set(new_relation.id),
                 };
-                link.insert(&self.db_session).await?;
+                link.insert(&txn).await?;
 
-                Ok(RelationResponse {
+                RelationResponse {
                     id: new_relation.id,
                     relation_type: serde_json::to_string(&new_relation.relation_type)
                         .unwrap_or_default(),
                     related_accession_id: new_relation.related_accession_id,
-                })
+                }
             }
-        }
+        };
+        
+        txn.commit().await?;
+        Ok(response)
     }
 
-    async fn list_for_accession(
+    async fn list(
         &self,
         metadata_id: i32,
         metadata_language: MetadataLanguage,
@@ -202,37 +207,44 @@ impl RelationsRepo for DBRelationsRepo {
         relation_id: i32,
         metadata_language: MetadataLanguage,
     ) -> Result<Option<()>, DbErr> {
-        match metadata_language {
+        let txn = self.db_session.begin().await?;
+        
+        let deleted = match metadata_language {
             MetadataLanguage::English => {
                 let link_deleted = DublinMetadataEnRelations::delete_many()
                     .filter(DublinMetadataEnRelationsColumn::RelationId.eq(relation_id))
-                    .exec(&self.db_session)
+                    .exec(&txn)
                     .await?;
                 if link_deleted.rows_affected > 0 {
                     let relation_deleted = DublinMetadataRelationEn::delete_by_id(relation_id)
-                        .exec(&self.db_session)
+                        .exec(&txn)
                         .await?;
-                    if relation_deleted.rows_affected > 0 {
-                        return Ok(Some(()));
-                    }
+                    relation_deleted.rows_affected > 0
+                } else {
+                    false
                 }
-                Ok(None)
             }
             MetadataLanguage::Arabic => {
                 let link_deleted = DublinMetadataArRelations::delete_many()
                     .filter(DublinMetadataArRelationsColumn::RelationId.eq(relation_id))
-                    .exec(&self.db_session)
+                    .exec(&txn)
                     .await?;
                 if link_deleted.rows_affected > 0 {
                     let relation_deleted = DublinMetadataRelationAr::delete_by_id(relation_id)
-                        .exec(&self.db_session)
+                        .exec(&txn)
                         .await?;
-                    if relation_deleted.rows_affected > 0 {
-                        return Ok(Some(()));
-                    }
+                    relation_deleted.rows_affected > 0
+                } else {
+                    false
                 }
-                Ok(None)
             }
+        };
+        
+        txn.commit().await?;
+        if deleted {
+            Ok(Some(()))
+        } else {
+            Ok(None)
         }
     }
 

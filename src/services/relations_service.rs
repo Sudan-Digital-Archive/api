@@ -66,7 +66,7 @@ impl RelationsService {
         }
     }
 
-    pub async fn list_for_accession(
+    pub async fn list(
         self,
         metadata_id: i32,
         metadata_language: MetadataLanguage,
@@ -77,7 +77,7 @@ impl RelationsService {
         );
         let result = self
             .relations_repo
-            .list_for_accession(metadata_id, metadata_language)
+            .list(metadata_id, metadata_language)
             .await;
 
         match result {

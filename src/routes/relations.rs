@@ -3,7 +3,6 @@
 use crate::app_factory::AppState;
 use crate::auth::{validate_at_least_contributor, validate_at_least_researcher};
 use crate::models::auth::AuthenticatedUser;
-use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateRelationRequest, RelationLangParam};
 use crate::models::response::RelationResponse;
 use axum::extract::{Path, Query, State};
@@ -63,52 +62,25 @@ async fn create_relation(
         return (StatusCode::BAD_REQUEST, err.to_string()).into_response();
     }
 
-    let metadata_id = match lang_param.lang {
-        MetadataLanguage::English => {
-            let accession = state
-                .accessions_service
-                .get_dublin_metadata_en_id(accession_id)
-                .await;
-            match accession {
-                Ok(Some(id)) => id,
-                Ok(None) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "English metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-                Err(_) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "English metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-            }
+    let metadata_id = match state
+        .accessions_service
+        .get_dublin_metadata_id(accession_id, lang_param.lang)
+        .await
+    {
+        Ok(Some(id)) => id,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                format!("{} metadata not found for this accession", lang_param.lang),
+            )
+                .into_response();
         }
-        MetadataLanguage::Arabic => {
-            let accession = state
-                .accessions_service
-                .get_dublin_metadata_ar_id(accession_id)
-                .await;
-            match accession {
-                Ok(Some(id)) => id,
-                Ok(None) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "Arabic metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-                Err(_) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "Arabic metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-            }
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                format!("{} metadata not found for this accession", lang_param.lang),
+            )
+                .into_response();
         }
     };
 
@@ -135,58 +107,31 @@ async fn list_relations(
     Path(accession_id): Path<i32>,
     Query(lang_param): Query<RelationLangParam>,
 ) -> Response {
-    let metadata_id = match lang_param.lang {
-        MetadataLanguage::English => {
-            let accession = state
-                .accessions_service
-                .get_dublin_metadata_en_id(accession_id)
-                .await;
-            match accession {
-                Ok(Some(id)) => id,
-                Ok(None) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "English metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-                Err(_) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "English metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-            }
+    let metadata_id = match state
+        .accessions_service
+        .get_dublin_metadata_id(accession_id, lang_param.lang)
+        .await
+    {
+        Ok(Some(id)) => id,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                format!("{} metadata not found for this accession", lang_param.lang),
+            )
+                .into_response();
         }
-        MetadataLanguage::Arabic => {
-            let accession = state
-                .accessions_service
-                .get_dublin_metadata_ar_id(accession_id)
-                .await;
-            match accession {
-                Ok(Some(id)) => id,
-                Ok(None) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "Arabic metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-                Err(_) => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        "Arabic metadata not found for this accession",
-                    )
-                        .into_response();
-                }
-            }
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                format!("{} metadata not found for this accession", lang_param.lang),
+            )
+                .into_response();
         }
     };
 
     state
         .relations_service
-        .list_for_accession(metadata_id, lang_param.lang)
+        .list(metadata_id, lang_param.lang)
         .await
 }
 
