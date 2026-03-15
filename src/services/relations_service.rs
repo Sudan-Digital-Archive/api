@@ -66,11 +66,7 @@ impl RelationsService {
         }
     }
 
-    pub async fn list(
-        self,
-        metadata_id: i32,
-        metadata_language: MetadataLanguage,
-    ) -> Response {
+    pub async fn list(self, metadata_id: i32, metadata_language: MetadataLanguage) -> Response {
         info!(
             "Listing relations for metadata {} with lang {:?}",
             metadata_id, metadata_language

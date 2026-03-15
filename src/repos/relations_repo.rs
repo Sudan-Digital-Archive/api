@@ -77,7 +77,7 @@ impl RelationsRepo for DBRelationsRepo {
         metadata_language: MetadataLanguage,
     ) -> Result<RelationResponse, DbErr> {
         let txn = self.db_session.begin().await?;
-        
+
         let response = match metadata_language {
             MetadataLanguage::English => {
                 let relation = DublinMetadataRelationEnActiveModel {
@@ -122,7 +122,7 @@ impl RelationsRepo for DBRelationsRepo {
                 }
             }
         };
-        
+
         txn.commit().await?;
         Ok(response)
     }
@@ -208,7 +208,7 @@ impl RelationsRepo for DBRelationsRepo {
         metadata_language: MetadataLanguage,
     ) -> Result<Option<()>, DbErr> {
         let txn = self.db_session.begin().await?;
-        
+
         let deleted = match metadata_language {
             MetadataLanguage::English => {
                 let link_deleted = DublinMetadataEnRelations::delete_many()
@@ -239,7 +239,7 @@ impl RelationsRepo for DBRelationsRepo {
                 }
             }
         };
-        
+
         txn.commit().await?;
         if deleted {
             Ok(Some(()))
