@@ -104,6 +104,12 @@ pub trait AccessionsRepo: Send + Sync {
         id: i32,
         update_accession_request: UpdateAccessionRequest,
     ) -> Result<Option<AccessionWithMetadataModel>, DbErr>;
+
+    async fn get_dublin_metadata_id(
+        &self,
+        accession_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<i32>, DbErr>;
 }
 
 /// A private struct that mirrors the fields required to create an accession
@@ -455,5 +461,19 @@ impl AccessionsRepo for DBAccessionsRepo {
             }
             None => Ok(None),
         }
+    }
+
+    async fn get_dublin_metadata_id(
+        &self,
+        accession_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<i32>, DbErr> {
+        let accession = Accession::find_by_id(accession_id)
+            .one(&self.db_session)
+            .await?;
+        Ok(match metadata_language {
+            MetadataLanguage::English => accession.and_then(|a| a.dublin_metadata_en),
+            MetadataLanguage::Arabic => accession.and_then(|a| a.dublin_metadata_ar),
+        })
     }
 }

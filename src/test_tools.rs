@@ -21,6 +21,7 @@ use crate::repos::contributors_repo::ContributorsRepo;
 use crate::repos::creators_repo::CreatorsRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::locations_repo::LocationsRepo;
+use crate::repos::relations_repo::RelationsRepo;
 use crate::repos::s3_repo::S3Repo;
 use crate::repos::subjects_repo::SubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
@@ -29,6 +30,7 @@ use crate::services::collections_service::CollectionsService;
 use crate::services::contributors_service::ContributorsService;
 use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
+use crate::services::relations_service::RelationsService;
 use crate::services::subjects_service::SubjectsService;
 use ::entity::sea_orm_active_enums::{DublinMetadataFormat, Role};
 use async_trait::async_trait;
@@ -101,6 +103,14 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
         _update_accession_request: crate::models::request::UpdateAccessionRequest,
     ) -> Result<Option<AccessionsWithMetadataModel>, DbErr> {
         Ok(Some(mock_one_accession_with_metadata()))
+    }
+
+    async fn get_dublin_metadata_id(
+        &self,
+        _accession_id: i32,
+        _metadata_language: crate::models::common::MetadataLanguage,
+    ) -> Result<Option<i32>, DbErr> {
+        Ok(Some(1))
     }
 }
 
@@ -181,6 +191,67 @@ impl SubjectsRepo for InMemorySubjectsRepo {
             id: subject_id,
             subject: "Mock Subject".to_string(),
         }))
+    }
+}
+
+/// In-memory implementation of RelationsRepo for testing.
+#[derive(Clone, Debug, Default)]
+pub struct InMemoryRelationsRepo {}
+
+#[async_trait]
+impl RelationsRepo for InMemoryRelationsRepo {
+    async fn write_one(
+        &self,
+        _metadata_id: i32,
+        _relation_type: entity::sea_orm_active_enums::DublinMetadataRelationType,
+        _related_accession_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<crate::models::response::RelationResponse, DbErr> {
+        Ok(crate::models::response::RelationResponse {
+            id: 1,
+            relation_type: "has_part".to_string(),
+            related_accession_id: 2,
+        })
+    }
+
+    async fn list(
+        &self,
+        _metadata_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Vec<crate::models::response::RelationResponse>, DbErr> {
+        Ok(vec![crate::models::response::RelationResponse {
+            id: 1,
+            relation_type: "has_part".to_string(),
+            related_accession_id: 2,
+        }])
+    }
+
+    async fn get_one(
+        &self,
+        relation_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<crate::models::response::RelationResponse>, DbErr> {
+        Ok(Some(crate::models::response::RelationResponse {
+            id: relation_id,
+            relation_type: "has_part".to_string(),
+            related_accession_id: 2,
+        }))
+    }
+
+    async fn delete_one(
+        &self,
+        _relation_id: i32,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<Option<()>, DbErr> {
+        Ok(Some(()))
+    }
+
+    async fn verify_related_accessions_exist(
+        &self,
+        _related_accession_ids: Vec<i32>,
+        _metadata_language: MetadataLanguage,
+    ) -> Result<bool, DbErr> {
+        Ok(true)
     }
 }
 
@@ -888,6 +959,12 @@ pub fn build_test_locations_service() -> LocationsService {
     LocationsService { locations_repo }
 }
 
+/// Builds a test relations service with in-memory repository.
+pub fn build_test_relations_service() -> RelationsService {
+    let relations_repo = Arc::new(InMemoryRelationsRepo::default());
+    RelationsService { relations_repo }
+}
+
 /// Builds a test creators service with in-memory repository.
 pub fn build_test_creators_service() -> CreatorsService {
     let creators_repo = Arc::new(InMemoryCreatorsRepo::default());
@@ -924,6 +1001,7 @@ pub fn build_test_app() -> Router {
     let creators_service = build_test_creators_service();
     let contributors_service = build_test_contributors_service();
     let auth_service = build_test_auth_service();
+    let relations_service = build_test_relations_service();
     let app_state = AppState {
         accessions_service,
         collections_service,
@@ -932,6 +1010,7 @@ pub fn build_test_app() -> Router {
         creators_service,
         contributors_service,
         auth_service,
+        relations_service,
     };
     let mut app_config = AppConfig::default();
     app_config.max_file_upload_size = 100 * 1024 * 1024;
@@ -950,6 +1029,7 @@ pub fn mock_paginated_ar() -> (Vec<AccessionsWithMetadataModel>, u64) {
 
 /// Creates a single mock accession with metadata for testing.
 pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
+    use serde_json::json;
     AccessionsWithMetadataModel {
         id: 1,
         crawl_status: CrawlStatus::Complete,
@@ -982,6 +1062,12 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         contributor_roles_en: Some(vec!["singer".to_string()]),
         contributors_ar: Some(vec!["بول ماك كارتني".to_string()]),
         contributor_roles_ar: Some(vec!["مغني".to_string()]),
+        relations_en: Some(
+            json!([{"id": 1, "relation_type": "has_part", "related_accession_id": 2}]),
+        ),
+        relations_ar: Some(
+            json!([{"id": 2, "relation_type": "is_part_of", "related_accession_id": 3}]),
+        ),
     }
 }
 

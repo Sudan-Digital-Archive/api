@@ -50,3 +50,4 @@ utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "reqwest"] }
 [dev-dependencies]
 mime = "0.3.17"
 pretty_assertions = "1.4.1"
+sea-orm-codegen = "1.1.19"

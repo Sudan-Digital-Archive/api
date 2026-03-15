@@ -26,6 +26,7 @@ pub struct Model {
     pub subjects_en_ids: Option<Vec<i32>>,
     pub contributors_en: Option<Vec<String>>,
     pub contributor_roles_en: Option<Vec<String>>,
+    pub relations_en: Option<Json>,
     pub title_ar: Option<String>,
     pub description_ar: Option<String>,
     pub creator_ar_id: Option<i32>,
@@ -35,6 +36,7 @@ pub struct Model {
     pub subjects_ar_ids: Option<Vec<i32>>,
     pub contributors_ar: Option<Vec<String>>,
     pub contributor_roles_ar: Option<Vec<String>>,
+    pub relations_ar: Option<Json>,
     pub has_english_metadata: bool,
     pub has_arabic_metadata: bool,
 }

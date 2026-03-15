@@ -47,3 +47,38 @@ pub enum Role {
     #[serde(rename = "contributor")]
     Contributor,
 }
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize, ToSchema,
+)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "dublin_metadata_relation_type"
+)]
+pub enum DublinMetadataRelationType {
+    #[sea_orm(string_value = "has_part")]
+    #[serde(rename = "has_part")]
+    HasPart,
+    #[sea_orm(string_value = "is_part_of")]
+    #[serde(rename = "is_part_of")]
+    IsPartOf,
+    #[sea_orm(string_value = "has_version")]
+    #[serde(rename = "has_version")]
+    HasVersion,
+    #[sea_orm(string_value = "is_version_of")]
+    #[serde(rename = "is_version_of")]
+    IsVersionOf,
+    #[sea_orm(string_value = "references")]
+    #[serde(rename = "references")]
+    References,
+    #[sea_orm(string_value = "is_referenced_by")]
+    #[serde(rename = "is_referenced_by")]
+    IsReferencedBy,
+    #[sea_orm(string_value = "conforms_to")]
+    #[serde(rename = "conforms_to")]
+    ConformsTo,
+    #[sea_orm(string_value = "requires")]
+    #[serde(rename = "requires")]
+    Requires,
+}

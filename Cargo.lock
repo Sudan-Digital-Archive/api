@@ -3960,6 +3960,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sea-orm-codegen"
+version = "1.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ddd6d528e67fac2c895aabeb43c1f81637c756e51f3310b89e86f3d701e23e2"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "sea-query",
+ "syn 2.0.117",
+ "tracing",
+]
+
+[[package]]
 name = "sea-orm-macros"
 version = "1.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4641,6 +4655,7 @@ dependencies = [
  "rand 0.8.5",
  "reqwest",
  "sea-orm",
+ "sea-orm-codegen",
  "serde",
  "serde_json",
  "sha2",

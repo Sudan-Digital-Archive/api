@@ -5,4 +5,5 @@ pub mod contributors;
 pub mod creators;
 pub mod health;
 pub mod locations;
+pub mod relations;
 pub mod subjects;

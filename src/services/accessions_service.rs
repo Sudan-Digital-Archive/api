@@ -3,6 +3,7 @@
 //! This module handles the business logic for creating, retrieving, and listing
 //! archival records, including their associated web crawls and metadata in both
 //! Arabic and English.
+use crate::models::common::MetadataLanguage;
 use crate::models::request::AccessionPaginationWithPrivate;
 use crate::models::request::{
     CreateAccessionRequest, CreateAccessionRequestRaw, CreateCrawlRequest, UpdateAccessionRequest,
@@ -849,5 +850,16 @@ impl AccessionsService {
             )
                 .into_response()
         })
+    }
+
+    pub async fn get_dublin_metadata_id(
+        &self,
+        accession_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<i32>, Response> {
+        self.accessions_repo
+            .get_dublin_metadata_id(accession_id, metadata_language)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())
     }
 }

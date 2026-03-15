@@ -20,6 +20,7 @@ use crate::repos::contributors_repo::DBContributorsRepo;
 use crate::repos::creators_repo::DBCreatorsRepo;
 use crate::repos::emails_repo::PostmarkEmailsRepo;
 use crate::repos::locations_repo::DBLocationsRepo;
+use crate::repos::relations_repo::DBRelationsRepo;
 use crate::repos::s3_repo::{DigitalOceanSpacesRepo, S3Repo};
 use crate::repos::subjects_repo::DBSubjectsRepo;
 use crate::services::accessions_service::AccessionsService;
@@ -28,6 +29,7 @@ use crate::services::collections_service::CollectionsService;
 use crate::services::contributors_service::ContributorsService;
 use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
+use crate::services::relations_service::RelationsService;
 use crate::services::subjects_service::SubjectsService;
 use reqwest::Client;
 use sea_orm::{ConnectOptions, Database};
@@ -63,6 +65,9 @@ async fn main() {
         db_session: db_session.clone(),
     };
     let locations_repo = DBLocationsRepo {
+        db_session: db_session.clone(),
+    };
+    let relations_repo = DBRelationsRepo {
         db_session: db_session.clone(),
     };
     let creators_repo = DBCreatorsRepo {
@@ -124,6 +129,9 @@ async fn main() {
     let subjects_service = SubjectsService {
         subjects_repo: Arc::new(subjects_repo.clone()),
     };
+    let relations_service = RelationsService {
+        relations_repo: Arc::new(relations_repo),
+    };
     let collections_service = CollectionsService {
         collections_repo: Arc::new(collections_repo),
         subjects_repo: Arc::new(subjects_repo),
@@ -136,6 +144,7 @@ async fn main() {
         locations_service,
         creators_service,
         contributors_service,
+        relations_service,
     };
     let app = create_app(app_state, dolly_the_app_config, false);
 
