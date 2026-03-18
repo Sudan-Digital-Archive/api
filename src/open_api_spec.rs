@@ -4,11 +4,11 @@ use crate::models::request::{
     ContributorPagination, ContributorRoleLangParam, ContributorRolePagination,
     CreateAccessionRequest, CreateAccessionRequestRaw, CreateCollectionRequest,
     CreateContributorRequest, CreateContributorRoleRequest, CreateCreatorRequest,
-    CreateLocationRequest, CreateSubjectRequest, CreateUserRequest, CreatorLangParam,
-    CreatorPagination, DeleteContributorRequest, DeleteContributorRoleRequest,
+    CreateLocationRequest, CreateRelationRequest, CreateSubjectRequest, CreateUserRequest,
+    CreatorLangParam, CreatorPagination, DeleteContributorRequest, DeleteContributorRoleRequest,
     DeleteCreatorRequest, DeleteLocationRequest, DeleteSubjectRequest, LocationLangParam,
-    LocationPagination, LoginRequest, RevokeApiKeyRequest, SubjectLangParam, SubjectPagination,
-    UpdateAccessionRequest, UpdateCollectionRequest, UpdateContributorRequest,
+    LocationPagination, LoginRequest, RelationLangParam, RevokeApiKeyRequest, SubjectLangParam,
+    SubjectPagination, UpdateAccessionRequest, UpdateCollectionRequest, UpdateContributorRequest,
     UpdateContributorRoleRequest, UpdateCreatorRequest, UpdateLocationRequest,
     UpdateSubjectRequest, UpdateUserRequest, UserPagination,
 };
@@ -18,7 +18,7 @@ use crate::models::response::{
     ListContributorRolesArResponse, ListContributorRolesEnResponse, ListContributorsArResponse,
     ListContributorsEnResponse, ListCreatorsResponse, ListLocationsResponse,
     ListSubjectsArResponse, ListSubjectsEnResponse, ListUsersResponse, LocationResponse,
-    SubjectResponse, UserResponse,
+    RelationResponse, SubjectResponse, UserResponse,
 };
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::{Modify, OpenApi};
@@ -91,7 +91,11 @@ impl Modify for SecurityAddon {
         crate::routes::collections::get_one_collection,
         crate::routes::collections::create_collection,
         crate::routes::collections::update_collection,
-        crate::routes::collections::delete_collection
+        crate::routes::collections::delete_collection,
+        crate::routes::relations::create_relation,
+        crate::routes::relations::list_relations,
+        crate::routes::relations::get_one_relation,
+        crate::routes::relations::delete_relation
     ),
     components(
         schemas(
@@ -155,7 +159,10 @@ impl Modify for SecurityAddon {
             CreateCollectionRequest,
             UpdateCollectionRequest,
             CollectionResponse,
-            ListCollectionsResponse
+            ListCollectionsResponse,
+            CreateRelationRequest,
+            RelationLangParam,
+            RelationResponse
         )
     ),
     tags(
@@ -166,7 +173,8 @@ impl Modify for SecurityAddon {
         (name = "Locations", description = "Location management endpoints"),
         (name = "Creators", description = "Creator management endpoints"),
         (name = "Contributors", description = "Contributor and role management endpoints"),
-        (name = "Collections", description = "Collection management endpoints")
+        (name = "Collections", description = "Collection management endpoints"),
+        (name = "Relations", description = "Dublin Metadata Relation management endpoints")
     ),
     modifiers(&SecurityAddon),
     servers(
