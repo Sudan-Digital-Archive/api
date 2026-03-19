@@ -28,7 +28,7 @@ impl RelationsService {
 
         let existing_accessions = self
             .relations_repo
-            .verify_related_accessions_exist(vec![payload.related_accession_id], metadata_language)
+            .verify_related_accessions_exist(vec![payload.related_accession_id])
             .await;
 
         match existing_accessions {

@@ -3,13 +3,11 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::response::RelationResponse;
 use async_trait::async_trait;
-use entity::dublin_metadata_ar::Column as DublinMetadataArColumn;
-use entity::dublin_metadata_ar::Entity as DublinMetadataAr;
+use entity::accession::Column as AccessionColumn;
+use entity::accession::Entity as Accession;
 use entity::dublin_metadata_ar_relations::ActiveModel as DublinMetadataArRelationsActiveModel;
 use entity::dublin_metadata_ar_relations::Column as DublinMetadataArRelationsColumn;
 use entity::dublin_metadata_ar_relations::Entity as DublinMetadataArRelations;
-use entity::dublin_metadata_en::Column as DublinMetadataEnColumn;
-use entity::dublin_metadata_en::Entity as DublinMetadataEn;
 use entity::dublin_metadata_en_relations::ActiveModel as DublinMetadataEnRelationsActiveModel;
 use entity::dublin_metadata_en_relations::Column as DublinMetadataEnRelationsColumn;
 use entity::dublin_metadata_en_relations::Entity as DublinMetadataEnRelations;
@@ -63,7 +61,6 @@ pub trait RelationsRepo: Send + Sync {
     async fn verify_related_accessions_exist(
         &self,
         related_accession_ids: Vec<i32>,
-        metadata_language: MetadataLanguage,
     ) -> Result<bool, DbErr>;
 }
 
@@ -251,24 +248,11 @@ impl RelationsRepo for DBRelationsRepo {
     async fn verify_related_accessions_exist(
         &self,
         related_accession_ids: Vec<i32>,
-        metadata_language: MetadataLanguage,
     ) -> Result<bool, DbErr> {
-        let flag = match metadata_language {
-            MetadataLanguage::English => {
-                let rows = DublinMetadataEn::find()
-                    .filter(DublinMetadataEnColumn::Id.is_in(related_accession_ids.clone()))
-                    .all(&self.db_session)
-                    .await?;
-                rows.len() == related_accession_ids.len()
-            }
-            MetadataLanguage::Arabic => {
-                let rows = DublinMetadataAr::find()
-                    .filter(DublinMetadataArColumn::Id.is_in(related_accession_ids.clone()))
-                    .all(&self.db_session)
-                    .await?;
-                rows.len() == related_accession_ids.len()
-            }
-        };
-        Ok(flag)
+        let rows = Accession::find()
+            .filter(AccessionColumn::Id.is_in(related_accession_ids.clone()))
+            .all(&self.db_session)
+            .await?;
+        Ok(rows.len() == related_accession_ids.len())
     }
 }

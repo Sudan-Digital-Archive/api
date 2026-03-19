@@ -249,7 +249,6 @@ impl RelationsRepo for InMemoryRelationsRepo {
     async fn verify_related_accessions_exist(
         &self,
         _related_accession_ids: Vec<i32>,
-        _metadata_language: MetadataLanguage,
     ) -> Result<bool, DbErr> {
         Ok(true)
     }
