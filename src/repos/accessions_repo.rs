@@ -182,8 +182,10 @@ impl DBAccessionsRepo {
                 if !accession_data.metadata_contributor_en_ids.is_empty() {
                     let mut contributor_links: Vec<DublinMetadataEnContributorsActiveModel> =
                         vec![];
-                    for (i, contributor_id) in
-                        accession_data.metadata_contributor_en_ids.iter().enumerate()
+                    for (i, contributor_id) in accession_data
+                        .metadata_contributor_en_ids
+                        .iter()
+                        .enumerate()
                     {
                         let role_id = accession_data
                             .metadata_contributor_role_en_ids
@@ -227,8 +229,10 @@ impl DBAccessionsRepo {
                 if !accession_data.metadata_contributor_ar_ids.is_empty() {
                     let mut contributor_links: Vec<DublinMetadataArContributorsActiveModel> =
                         vec![];
-                    for (i, contributor_id) in
-                        accession_data.metadata_contributor_ar_ids.iter().enumerate()
+                    for (i, contributor_id) in accession_data
+                        .metadata_contributor_ar_ids
+                        .iter()
+                        .enumerate()
                     {
                         let role_id = accession_data
                             .metadata_contributor_role_ar_ids
@@ -481,7 +485,10 @@ impl AccessionsRepo for DBAccessionsRepo {
                             .filter(<entity::dublin_metadata_en_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
                             .exec(&txn)
                             .await?;
-                        if !update_accession_request.metadata_contributor_en_ids.is_empty() {
+                        if !update_accession_request
+                            .metadata_contributor_en_ids
+                            .is_empty()
+                        {
                             let mut new_contributor_links: Vec<
                                 DublinMetadataEnContributorsActiveModel,
                             > = vec![];
@@ -495,12 +502,11 @@ impl AccessionsRepo for DBAccessionsRepo {
                                     .get(i)
                                     .copied()
                                     .flatten();
-                                let contributor_link =
-                                    DublinMetadataEnContributorsActiveModel {
-                                        metadata_id: ActiveValue::Set(metadata_id),
-                                        contributor_id: ActiveValue::Set(*contributor_id),
-                                        role_id: ActiveValue::Set(role_id),
-                                    };
+                                let contributor_link = DublinMetadataEnContributorsActiveModel {
+                                    metadata_id: ActiveValue::Set(metadata_id),
+                                    contributor_id: ActiveValue::Set(*contributor_id),
+                                    role_id: ActiveValue::Set(role_id),
+                                };
                                 new_contributor_links.push(contributor_link);
                             }
                             DublinMetadataEnContributors::insert_many(new_contributor_links)
@@ -544,7 +550,10 @@ impl AccessionsRepo for DBAccessionsRepo {
                             .filter(<entity::dublin_metadata_ar_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
                             .exec(&txn)
                             .await?;
-                        if !update_accession_request.metadata_contributor_ar_ids.is_empty() {
+                        if !update_accession_request
+                            .metadata_contributor_ar_ids
+                            .is_empty()
+                        {
                             let mut new_contributor_links: Vec<
                                 DublinMetadataArContributorsActiveModel,
                             > = vec![];
@@ -558,12 +567,11 @@ impl AccessionsRepo for DBAccessionsRepo {
                                     .get(i)
                                     .copied()
                                     .flatten();
-                                let contributor_link =
-                                    DublinMetadataArContributorsActiveModel {
-                                        metadata_id: ActiveValue::Set(metadata_id),
-                                        contributor_id: ActiveValue::Set(*contributor_id),
-                                        role_id: ActiveValue::Set(role_id),
-                                    };
+                                let contributor_link = DublinMetadataArContributorsActiveModel {
+                                    metadata_id: ActiveValue::Set(metadata_id),
+                                    contributor_id: ActiveValue::Set(*contributor_id),
+                                    role_id: ActiveValue::Set(role_id),
+                                };
                                 new_contributor_links.push(contributor_link);
                             }
                             DublinMetadataArContributors::insert_many(new_contributor_links)

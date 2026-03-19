@@ -926,12 +926,20 @@ pub fn build_test_accessions_service() -> AccessionsService {
     let s3_repo = Arc::new(InMemoryS3Repo {
         bucket: "test-bucket".to_string(),
     });
+    let subjects_service = build_test_subjects_service();
+    let locations_service = build_test_locations_service();
+    let creators_service = build_test_creators_service();
+    let contributors_service = build_test_contributors_service();
     AccessionsService {
         accessions_repo,
         auth_repo,
         browsertrix_repo,
         emails_repo,
         s3_repo,
+        subjects_service,
+        locations_service,
+        creators_service,
+        contributors_service,
     }
 }
 

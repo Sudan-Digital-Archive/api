@@ -55,6 +55,10 @@ pub struct AccessionsService {
     pub browsertrix_repo: Arc<dyn BrowsertrixRepo>,
     pub emails_repo: Arc<dyn EmailsRepo>,
     pub s3_repo: Arc<dyn S3Repo>,
+    pub subjects_service: SubjectsService,
+    pub locations_service: LocationsService,
+    pub creators_service: CreatorsService,
+    pub contributors_service: ContributorsService,
 }
 
 impl AccessionsService {
@@ -272,10 +276,12 @@ impl AccessionsService {
                                     metadata_location_ar_id: payload.metadata_location_ar_id,
                                     metadata_creator_en_id: payload.metadata_creator_en_id,
                                     metadata_creator_ar_id: payload.metadata_creator_ar_id,
-                                    metadata_contributor_en_ids: payload.metadata_contributor_en_ids,
+                                    metadata_contributor_en_ids: payload
+                                        .metadata_contributor_en_ids,
                                     metadata_contributor_role_en_ids: payload
                                         .metadata_contributor_role_en_ids,
-                                    metadata_contributor_ar_ids: payload.metadata_contributor_ar_ids,
+                                    metadata_contributor_ar_ids: payload
+                                        .metadata_contributor_ar_ids,
                                     metadata_contributor_role_ar_ids: payload
                                         .metadata_contributor_role_ar_ids,
                                 };
@@ -667,6 +673,177 @@ impl AccessionsService {
         self.upload_from_stream(key, field, content_type).await
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub async fn validate_metadata_references(
+        self,
+        subjects: Vec<i32>,
+        metadata_language: MetadataLanguage,
+        metadata_location_en_id: Option<i32>,
+        metadata_location_ar_id: Option<i32>,
+        metadata_creator_en_id: Option<i32>,
+        metadata_creator_ar_id: Option<i32>,
+        metadata_contributor_en_ids: Vec<i32>,
+        metadata_contributor_role_en_ids: &[Option<i32>],
+        metadata_contributor_ar_ids: Vec<i32>,
+        metadata_contributor_role_ar_ids: &[Option<i32>],
+    ) -> Result<(), Response> {
+        if !subjects.is_empty() {
+            let subjects_exist = self
+                .subjects_service
+                .clone()
+                .verify_subjects_exist(subjects, metadata_language)
+                .await;
+            match subjects_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        let mut location_ids: Vec<i32> = vec![];
+        if let Some(en_id) = metadata_location_en_id {
+            location_ids.push(en_id);
+        }
+        if let Some(ar_id) = metadata_location_ar_id {
+            location_ids.push(ar_id);
+        }
+        if !location_ids.is_empty() {
+            let locations_exist = self
+                .locations_service
+                .clone()
+                .verify_locations_exist(location_ids, metadata_language)
+                .await;
+            match locations_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Locations do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        let mut creator_ids: Vec<i32> = vec![];
+        if let Some(en_id) = metadata_creator_en_id {
+            creator_ids.push(en_id);
+        }
+        if let Some(ar_id) = metadata_creator_ar_id {
+            creator_ids.push(ar_id);
+        }
+        if !creator_ids.is_empty() {
+            let creators_exist = self
+                .creators_service
+                .clone()
+                .verify_creators_exist(creator_ids, metadata_language)
+                .await;
+            match creators_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Creators do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        if !metadata_contributor_en_ids.is_empty()
+            && metadata_contributor_en_ids.len() != metadata_contributor_role_en_ids.len()
+        {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Contributor IDs and role IDs must have the same length",
+            )
+                .into_response());
+        }
+        if !metadata_contributor_ar_ids.is_empty()
+            && metadata_contributor_ar_ids.len() != metadata_contributor_role_ar_ids.len()
+        {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Contributor IDs and role IDs must have the same length",
+            )
+                .into_response());
+        }
+
+        let mut contributor_ids: Vec<i32> = vec![];
+        contributor_ids.extend(metadata_contributor_en_ids.clone());
+        contributor_ids.extend(metadata_contributor_ar_ids.clone());
+
+        let mut role_ids: Vec<i32> = vec![];
+        for role_id in metadata_contributor_role_en_ids.iter().flatten() {
+            role_ids.push(*role_id);
+        }
+        for role_id in metadata_contributor_role_ar_ids.iter().flatten() {
+            role_ids.push(*role_id);
+        }
+
+        if !contributor_ids.is_empty() {
+            let contributors_exist = self
+                .contributors_service
+                .clone()
+                .verify_contributors_exist(contributor_ids.clone(), metadata_language)
+                .await;
+            match contributors_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Contributors do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        if !role_ids.is_empty() {
+            let roles_exist = self
+                .contributors_service
+                .clone()
+                .verify_roles_exist(role_ids.clone(), metadata_language)
+                .await;
+            match roles_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err((StatusCode::BAD_REQUEST, "Contributor roles do not exist")
+                            .into_response());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Extracts and validates accession data from a multipart form submission.
     ///
     /// This method processes a multipart form containing metadata JSON and an optional file upload.
@@ -686,10 +863,6 @@ impl AccessionsService {
     pub async fn extract_accession_from_multipart_form(
         self,
         mut multipart: Multipart,
-        subjects_service: SubjectsService,
-        locations_service: LocationsService,
-        creators_service: CreatorsService,
-        contributors_service: ContributorsService,
     ) -> Result<CreateAccessionRequestRaw, Response> {
         let mut metadata_payload: Option<CreateAccessionRequestRaw> = None;
         let mut step = MultiPartExtractionStep::ExpectMetadata; // first field must be the metadata JSON
@@ -737,156 +910,20 @@ impl AccessionsService {
                 }
 
                 info!("Extracted and validated metadata JSON");
-                let subjects_exist = subjects_service
-                    .clone()
-                    .verify_subjects_exist(
+                self.clone()
+                    .validate_metadata_references(
                         parsed.metadata_subjects.clone(),
                         parsed.metadata_language,
+                        parsed.metadata_location_en_id,
+                        parsed.metadata_location_ar_id,
+                        parsed.metadata_creator_en_id,
+                        parsed.metadata_creator_ar_id,
+                        parsed.metadata_contributor_en_ids.clone(),
+                        &parsed.metadata_contributor_role_en_ids,
+                        parsed.metadata_contributor_ar_ids.clone(),
+                        &parsed.metadata_contributor_role_ar_ids,
                     )
-                    .await;
-
-                match subjects_exist {
-                    Err(err) => {
-                        return Err(
-                            (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                        );
-                    }
-                    Ok(flag) => {
-                        if !flag {
-                            return Err(
-                                (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response()
-                            );
-                        }
-                    }
-                };
-                info!("Validated metadata subjects exist");
-
-                let mut location_ids: Vec<i32> = vec![];
-                if let Some(en_id) = parsed.metadata_location_en_id {
-                    location_ids.push(en_id);
-                }
-                if let Some(ar_id) = parsed.metadata_location_ar_id {
-                    location_ids.push(ar_id);
-                }
-                if !location_ids.is_empty() {
-                    let locations_exist = locations_service
-                        .clone()
-                        .verify_locations_exist(location_ids, parsed.metadata_language)
-                        .await;
-                    match locations_exist {
-                        Err(err) => {
-                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-                                .into_response());
-                        }
-                        Ok(flag) => {
-                            if !flag {
-                                return Err((StatusCode::BAD_REQUEST, "Locations do not exist")
-                                    .into_response());
-                            }
-                        }
-                    };
-                    info!("Validated metadata locations exist");
-                }
-
-                let mut creator_ids: Vec<i32> = vec![];
-                if let Some(en_id) = parsed.metadata_creator_en_id {
-                    creator_ids.push(en_id);
-                }
-                if let Some(ar_id) = parsed.metadata_creator_ar_id {
-                    creator_ids.push(ar_id);
-                }
-                if !creator_ids.is_empty() {
-                    let creators_exist = creators_service
-                        .clone()
-                        .verify_creators_exist(creator_ids, parsed.metadata_language)
-                        .await;
-                    match creators_exist {
-                        Err(err) => {
-                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-                                .into_response());
-                        }
-                        Ok(flag) => {
-                            if !flag {
-                                return Err((StatusCode::BAD_REQUEST, "Creators do not exist")
-                                    .into_response());
-                            }
-                        }
-                    };
-                    info!("Validated metadata creators exist");
-                }
-
-                if !parsed.metadata_contributor_en_ids.is_empty()
-                    && parsed.metadata_contributor_en_ids.len()
-                        != parsed.metadata_contributor_role_en_ids.len()
-                {
-                    return Err((
-                        StatusCode::BAD_REQUEST,
-                        "Contributor IDs and role IDs must have the same length",
-                    )
-                        .into_response());
-                }
-                if !parsed.metadata_contributor_ar_ids.is_empty()
-                    && parsed.metadata_contributor_ar_ids.len()
-                        != parsed.metadata_contributor_role_ar_ids.len()
-                {
-                    return Err((
-                        StatusCode::BAD_REQUEST,
-                        "Contributor IDs and role IDs must have the same length",
-                    )
-                        .into_response());
-                }
-                let mut contributor_ids: Vec<i32> = vec![];
-                contributor_ids.extend(parsed.metadata_contributor_en_ids.clone());
-                contributor_ids.extend(parsed.metadata_contributor_ar_ids.clone());
-                let mut role_ids: Vec<i32> = vec![];
-                for role_id in parsed.metadata_contributor_role_en_ids.iter().flatten() {
-                    role_ids.push(*role_id);
-                }
-                for role_id in parsed.metadata_contributor_role_ar_ids.iter().flatten() {
-                    role_ids.push(*role_id);
-                }
-                if !contributor_ids.is_empty() {
-                    let contributors_exist = contributors_service
-                        .clone()
-                        .verify_contributors_exist(contributor_ids.clone(), parsed.metadata_language)
-                        .await;
-                    match contributors_exist {
-                        Err(err) => {
-                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-                                .into_response());
-                        }
-                        Ok(flag) => {
-                            if !flag {
-                                return Err(
-                                    (StatusCode::BAD_REQUEST, "Contributors do not exist")
-                                        .into_response(),
-                                );
-                            }
-                        }
-                    };
-                    info!("Validated metadata contributors exist");
-                }
-                if !role_ids.is_empty() {
-                    let roles_exist = contributors_service
-                        .clone()
-                        .verify_roles_exist(role_ids.clone(), parsed.metadata_language)
-                        .await;
-                    match roles_exist {
-                        Err(err) => {
-                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-                                .into_response());
-                        }
-                        Ok(flag) => {
-                            if !flag {
-                                return Err(
-                                    (StatusCode::BAD_REQUEST, "Contributor roles do not exist")
-                                        .into_response(),
-                                );
-                            }
-                        }
-                    };
-                    info!("Validated metadata contributor roles exist");
-                }
+                    .await?;
 
                 metadata_payload = Some(parsed);
                 step = MultiPartExtractionStep::ExpectFile;

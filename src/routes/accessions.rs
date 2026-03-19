@@ -71,13 +71,7 @@ async fn create_accession_raw(
     let create_accession_raw_request = match state
         .accessions_service
         .clone()
-        .extract_accession_from_multipart_form(
-            multipart,
-            state.subjects_service.clone(),
-            state.locations_service.clone(),
-            state.creators_service.clone(),
-            state.contributors_service.clone(),
-        )
+        .extract_accession_from_multipart_form(multipart)
         .await
     {
         Ok(data) => data,
@@ -131,134 +125,24 @@ async fn create_accession_crawl(
     if let Err(err) = payload.validate() {
         return (StatusCode::BAD_REQUEST, err.to_string()).into_response();
     }
-    let subjects_exist = state
-        .subjects_service
+    if let Err(response) = state
+        .accessions_service
         .clone()
-        .verify_subjects_exist(payload.metadata_subjects.clone(), payload.metadata_language)
-        .await;
-    match subjects_exist {
-        Err(err) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-        }
-        Ok(flag) => {
-            if !flag {
-                return (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response();
-            }
-        }
-    };
-    let mut location_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_location_en_id {
-        location_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_location_ar_id {
-        location_ids.push(ar_id);
-    }
-    if !location_ids.is_empty() {
-        let locations_exist = state
-            .locations_service
-            .clone()
-            .verify_locations_exist(location_ids, payload.metadata_language)
-            .await;
-        match locations_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
-                }
-            }
-        };
-    }
-    let mut creator_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_creator_en_id {
-        creator_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_creator_ar_id {
-        creator_ids.push(ar_id);
-    }
-    if !creator_ids.is_empty() {
-        let creators_exist = state
-            .creators_service
-            .clone()
-            .verify_creators_exist(creator_ids, payload.metadata_language)
-            .await;
-        match creators_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Creators do not exist").into_response();
-                }
-            }
-        };
-    }
-    if !payload.metadata_contributor_en_ids.is_empty()
-        && payload.metadata_contributor_en_ids.len() != payload.metadata_contributor_role_en_ids.len()
-    {
-        return (
-            StatusCode::BAD_REQUEST,
-            "Contributor IDs and role IDs must have the same length",
+        .validate_metadata_references(
+            payload.metadata_subjects.clone(),
+            payload.metadata_language,
+            payload.metadata_location_en_id,
+            payload.metadata_location_ar_id,
+            payload.metadata_creator_en_id,
+            payload.metadata_creator_ar_id,
+            payload.metadata_contributor_en_ids.clone(),
+            &payload.metadata_contributor_role_en_ids,
+            payload.metadata_contributor_ar_ids.clone(),
+            &payload.metadata_contributor_role_ar_ids,
         )
-            .into_response();
-    }
-    if !payload.metadata_contributor_ar_ids.is_empty()
-        && payload.metadata_contributor_ar_ids.len() != payload.metadata_contributor_role_ar_ids.len()
+        .await
     {
-        return (
-            StatusCode::BAD_REQUEST,
-            "Contributor IDs and role IDs must have the same length",
-        )
-            .into_response();
-    }
-    let mut contributor_ids: Vec<i32> = vec![];
-    contributor_ids.extend(payload.metadata_contributor_en_ids.clone());
-    contributor_ids.extend(payload.metadata_contributor_ar_ids.clone());
-    let mut role_ids: Vec<i32> = vec![];
-    for role_id in payload.metadata_contributor_role_en_ids.iter().flatten() {
-        role_ids.push(*role_id);
-    }
-    for role_id in payload.metadata_contributor_role_ar_ids.iter().flatten() {
-        role_ids.push(*role_id);
-    }
-    if !contributor_ids.is_empty() {
-        let contributors_exist = state
-            .contributors_service
-            .clone()
-            .verify_contributors_exist(contributor_ids.clone(), payload.metadata_language)
-            .await;
-        match contributors_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Contributors do not exist").into_response();
-                }
-            }
-        };
-    }
-    if !role_ids.is_empty() {
-        let roles_exist = state
-            .contributors_service
-            .clone()
-            .verify_roles_exist(role_ids.clone(), payload.metadata_language)
-            .await;
-        match roles_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        "Contributor roles do not exist",
-                    )
-                        .into_response();
-                }
-            }
-        };
+        return response;
     }
     tokio::spawn(async move {
         state
@@ -428,134 +312,24 @@ async fn update_accession(
     if !validate_at_least_researcher(&authenticated_user.role) {
         return (StatusCode::FORBIDDEN, "Must have at least researcher role").into_response();
     }
-    let subjects_exist = state
-        .subjects_service
+    if let Err(response) = state
+        .accessions_service
         .clone()
-        .verify_subjects_exist(payload.metadata_subjects.clone(), payload.metadata_language)
-        .await;
-    match subjects_exist {
-        Err(err) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-        }
-        Ok(flag) => {
-            if !flag {
-                return (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response();
-            }
-        }
-    };
-    let mut location_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_location_en_id {
-        location_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_location_ar_id {
-        location_ids.push(ar_id);
-    }
-    if !location_ids.is_empty() {
-        let locations_exist = state
-            .locations_service
-            .clone()
-            .verify_locations_exist(location_ids, payload.metadata_language)
-            .await;
-        match locations_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
-                }
-            }
-        };
-    }
-    let mut creator_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_creator_en_id {
-        creator_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_creator_ar_id {
-        creator_ids.push(ar_id);
-    }
-    if !creator_ids.is_empty() {
-        let creators_exist = state
-            .creators_service
-            .clone()
-            .verify_creators_exist(creator_ids, payload.metadata_language)
-            .await;
-        match creators_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Creators do not exist").into_response();
-                }
-            }
-        };
-    }
-    if !payload.metadata_contributor_en_ids.is_empty()
-        && payload.metadata_contributor_en_ids.len() != payload.metadata_contributor_role_en_ids.len()
-    {
-        return (
-            StatusCode::BAD_REQUEST,
-            "Contributor IDs and role IDs must have the same length",
+        .validate_metadata_references(
+            payload.metadata_subjects.clone(),
+            payload.metadata_language,
+            payload.metadata_location_en_id,
+            payload.metadata_location_ar_id,
+            payload.metadata_creator_en_id,
+            payload.metadata_creator_ar_id,
+            payload.metadata_contributor_en_ids.clone(),
+            &payload.metadata_contributor_role_en_ids,
+            payload.metadata_contributor_ar_ids.clone(),
+            &payload.metadata_contributor_role_ar_ids,
         )
-            .into_response();
-    }
-    if !payload.metadata_contributor_ar_ids.is_empty()
-        && payload.metadata_contributor_ar_ids.len() != payload.metadata_contributor_role_ar_ids.len()
+        .await
     {
-        return (
-            StatusCode::BAD_REQUEST,
-            "Contributor IDs and role IDs must have the same length",
-        )
-            .into_response();
-    }
-    let mut contributor_ids: Vec<i32> = vec![];
-    contributor_ids.extend(payload.metadata_contributor_en_ids.clone());
-    contributor_ids.extend(payload.metadata_contributor_ar_ids.clone());
-    let mut role_ids: Vec<i32> = vec![];
-    for role_id in payload.metadata_contributor_role_en_ids.iter().flatten() {
-        role_ids.push(*role_id);
-    }
-    for role_id in payload.metadata_contributor_role_ar_ids.iter().flatten() {
-        role_ids.push(*role_id);
-    }
-    if !contributor_ids.is_empty() {
-        let contributors_exist = state
-            .contributors_service
-            .clone()
-            .verify_contributors_exist(contributor_ids.clone(), payload.metadata_language)
-            .await;
-        match contributors_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Contributors do not exist").into_response();
-                }
-            }
-        };
-    }
-    if !role_ids.is_empty() {
-        let roles_exist = state
-            .contributors_service
-            .clone()
-            .verify_roles_exist(role_ids.clone(), payload.metadata_language)
-            .await;
-        match roles_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        "Contributor roles do not exist",
-                    )
-                        .into_response();
-                }
-            }
-        };
+        return response;
     }
     state.accessions_service.update_one(id, payload).await
 }
