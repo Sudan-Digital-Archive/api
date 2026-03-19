@@ -76,6 +76,7 @@ async fn create_accession_raw(
             state.subjects_service.clone(),
             state.locations_service.clone(),
             state.creators_service.clone(),
+            state.contributors_service.clone(),
         )
         .await
     {
@@ -189,6 +190,72 @@ async fn create_accession_crawl(
             Ok(flag) => {
                 if !flag {
                     return (StatusCode::BAD_REQUEST, "Creators do not exist").into_response();
+                }
+            }
+        };
+    }
+    if !payload.metadata_contributor_en_ids.is_empty()
+        && payload.metadata_contributor_en_ids.len() != payload.metadata_contributor_role_en_ids.len()
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Contributor IDs and role IDs must have the same length",
+        )
+            .into_response();
+    }
+    if !payload.metadata_contributor_ar_ids.is_empty()
+        && payload.metadata_contributor_ar_ids.len() != payload.metadata_contributor_role_ar_ids.len()
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Contributor IDs and role IDs must have the same length",
+        )
+            .into_response();
+    }
+    let mut contributor_ids: Vec<i32> = vec![];
+    contributor_ids.extend(payload.metadata_contributor_en_ids.clone());
+    contributor_ids.extend(payload.metadata_contributor_ar_ids.clone());
+    let mut role_ids: Vec<i32> = vec![];
+    for role_id in payload.metadata_contributor_role_en_ids.iter().flatten() {
+        role_ids.push(*role_id);
+    }
+    for role_id in payload.metadata_contributor_role_ar_ids.iter().flatten() {
+        role_ids.push(*role_id);
+    }
+    if !contributor_ids.is_empty() {
+        let contributors_exist = state
+            .contributors_service
+            .clone()
+            .verify_contributors_exist(contributor_ids.clone(), payload.metadata_language)
+            .await;
+        match contributors_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Contributors do not exist").into_response();
+                }
+            }
+        };
+    }
+    if !role_ids.is_empty() {
+        let roles_exist = state
+            .contributors_service
+            .clone()
+            .verify_roles_exist(role_ids.clone(), payload.metadata_language)
+            .await;
+        match roles_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        "Contributor roles do not exist",
+                    )
+                        .into_response();
                 }
             }
         };
@@ -424,6 +491,72 @@ async fn update_accession(
             }
         };
     }
+    if !payload.metadata_contributor_en_ids.is_empty()
+        && payload.metadata_contributor_en_ids.len() != payload.metadata_contributor_role_en_ids.len()
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Contributor IDs and role IDs must have the same length",
+        )
+            .into_response();
+    }
+    if !payload.metadata_contributor_ar_ids.is_empty()
+        && payload.metadata_contributor_ar_ids.len() != payload.metadata_contributor_role_ar_ids.len()
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Contributor IDs and role IDs must have the same length",
+        )
+            .into_response();
+    }
+    let mut contributor_ids: Vec<i32> = vec![];
+    contributor_ids.extend(payload.metadata_contributor_en_ids.clone());
+    contributor_ids.extend(payload.metadata_contributor_ar_ids.clone());
+    let mut role_ids: Vec<i32> = vec![];
+    for role_id in payload.metadata_contributor_role_en_ids.iter().flatten() {
+        role_ids.push(*role_id);
+    }
+    for role_id in payload.metadata_contributor_role_ar_ids.iter().flatten() {
+        role_ids.push(*role_id);
+    }
+    if !contributor_ids.is_empty() {
+        let contributors_exist = state
+            .contributors_service
+            .clone()
+            .verify_contributors_exist(contributor_ids.clone(), payload.metadata_language)
+            .await;
+        match contributors_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (StatusCode::BAD_REQUEST, "Contributors do not exist").into_response();
+                }
+            }
+        };
+    }
+    if !role_ids.is_empty() {
+        let roles_exist = state
+            .contributors_service
+            .clone()
+            .verify_roles_exist(role_ids.clone(), payload.metadata_language)
+            .await;
+        match roles_exist {
+            Err(err) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            }
+            Ok(flag) => {
+                if !flag {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        "Contributor roles do not exist",
+                    )
+                        .into_response();
+                }
+            }
+        };
+    }
     state.accessions_service.update_one(id, payload).await
 }
 
@@ -510,6 +643,10 @@ mod tests {
                     metadata_location_ar_id: None,
                     metadata_creator_en_id: None,
                     metadata_creator_ar_id: None,
+                    metadata_contributor_en_ids: vec![],
+                    metadata_contributor_role_en_ids: vec![],
+                    metadata_contributor_ar_ids: vec![],
+                    metadata_contributor_role_ar_ids: vec![],
                 },
                 Uuid::new_v4(),
             )
@@ -537,6 +674,10 @@ mod tests {
                     metadata_location_ar_id: None,
                     metadata_creator_en_id: None,
                     metadata_creator_ar_id: None,
+                    metadata_contributor_en_ids: vec![],
+                    metadata_contributor_role_en_ids: vec![],
+                    metadata_contributor_ar_ids: vec![],
+                    metadata_contributor_role_ar_ids: vec![],
                 },
                 Uuid::new_v4(),
             )

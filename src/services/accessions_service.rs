@@ -14,6 +14,7 @@ use crate::repos::auth_repo::AuthRepo;
 use crate::repos::browsertrix_repo::BrowsertrixRepo;
 use crate::repos::emails_repo::EmailsRepo;
 use crate::repos::s3_repo::S3Repo;
+use crate::services::contributors_service::ContributorsService;
 use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
@@ -271,6 +272,12 @@ impl AccessionsService {
                                     metadata_location_ar_id: payload.metadata_location_ar_id,
                                     metadata_creator_en_id: payload.metadata_creator_en_id,
                                     metadata_creator_ar_id: payload.metadata_creator_ar_id,
+                                    metadata_contributor_en_ids: payload.metadata_contributor_en_ids,
+                                    metadata_contributor_role_en_ids: payload
+                                        .metadata_contributor_role_en_ids,
+                                    metadata_contributor_ar_ids: payload.metadata_contributor_ar_ids,
+                                    metadata_contributor_role_ar_ids: payload
+                                        .metadata_contributor_role_ar_ids,
                                 };
                                 let write_result = self
                                     .accessions_repo
@@ -682,6 +689,7 @@ impl AccessionsService {
         subjects_service: SubjectsService,
         locations_service: LocationsService,
         creators_service: CreatorsService,
+        contributors_service: ContributorsService,
     ) -> Result<CreateAccessionRequestRaw, Response> {
         let mut metadata_payload: Option<CreateAccessionRequestRaw> = None;
         let mut step = MultiPartExtractionStep::ExpectMetadata; // first field must be the metadata JSON
@@ -805,6 +813,79 @@ impl AccessionsService {
                         }
                     };
                     info!("Validated metadata creators exist");
+                }
+
+                if !parsed.metadata_contributor_en_ids.is_empty()
+                    && parsed.metadata_contributor_en_ids.len()
+                        != parsed.metadata_contributor_role_en_ids.len()
+                {
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        "Contributor IDs and role IDs must have the same length",
+                    )
+                        .into_response());
+                }
+                if !parsed.metadata_contributor_ar_ids.is_empty()
+                    && parsed.metadata_contributor_ar_ids.len()
+                        != parsed.metadata_contributor_role_ar_ids.len()
+                {
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        "Contributor IDs and role IDs must have the same length",
+                    )
+                        .into_response());
+                }
+                let mut contributor_ids: Vec<i32> = vec![];
+                contributor_ids.extend(parsed.metadata_contributor_en_ids.clone());
+                contributor_ids.extend(parsed.metadata_contributor_ar_ids.clone());
+                let mut role_ids: Vec<i32> = vec![];
+                for role_id in parsed.metadata_contributor_role_en_ids.iter().flatten() {
+                    role_ids.push(*role_id);
+                }
+                for role_id in parsed.metadata_contributor_role_ar_ids.iter().flatten() {
+                    role_ids.push(*role_id);
+                }
+                if !contributor_ids.is_empty() {
+                    let contributors_exist = contributors_service
+                        .clone()
+                        .verify_contributors_exist(contributor_ids.clone(), parsed.metadata_language)
+                        .await;
+                    match contributors_exist {
+                        Err(err) => {
+                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+                                .into_response());
+                        }
+                        Ok(flag) => {
+                            if !flag {
+                                return Err(
+                                    (StatusCode::BAD_REQUEST, "Contributors do not exist")
+                                        .into_response(),
+                                );
+                            }
+                        }
+                    };
+                    info!("Validated metadata contributors exist");
+                }
+                if !role_ids.is_empty() {
+                    let roles_exist = contributors_service
+                        .clone()
+                        .verify_roles_exist(role_ids.clone(), parsed.metadata_language)
+                        .await;
+                    match roles_exist {
+                        Err(err) => {
+                            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+                                .into_response());
+                        }
+                        Ok(flag) => {
+                            if !flag {
+                                return Err(
+                                    (StatusCode::BAD_REQUEST, "Contributor roles do not exist")
+                                        .into_response(),
+                                );
+                            }
+                        }
+                    };
+                    info!("Validated metadata contributor roles exist");
                 }
 
                 metadata_payload = Some(parsed);

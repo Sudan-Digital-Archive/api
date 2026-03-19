@@ -20,10 +20,14 @@ use entity::accessions_with_metadata::Entity as AccessionWithMetadata;
 use entity::accessions_with_metadata::Model as AccessionWithMetadataModel;
 use entity::dublin_metadata_ar::ActiveModel as DublinMetadataArActiveModel;
 use entity::dublin_metadata_ar::Entity as DublinMetadataAr;
+use entity::dublin_metadata_ar_contributors::ActiveModel as DublinMetadataArContributorsActiveModel;
+use entity::dublin_metadata_ar_contributors::Entity as DublinMetadataArContributors;
 use entity::dublin_metadata_ar_subjects::ActiveModel as DublinMetadataSubjectsArActiveModel;
 use entity::dublin_metadata_ar_subjects::Entity as DublinMetadataSubjectsAr;
 use entity::dublin_metadata_en::ActiveModel as DublinMetadataEnActiveModel;
 use entity::dublin_metadata_en::Entity as DublinMetadataEn;
+use entity::dublin_metadata_en_contributors::ActiveModel as DublinMetadataEnContributorsActiveModel;
+use entity::dublin_metadata_en_contributors::Entity as DublinMetadataEnContributors;
 use entity::dublin_metadata_en_subjects::ActiveModel as DublinMetadataSubjectsEnActiveModel;
 use entity::dublin_metadata_en_subjects::Entity as DublinMetadataSubjectsEn;
 use entity::sea_orm_active_enums::{CrawlStatus, DublinMetadataFormat};
@@ -137,6 +141,10 @@ struct CreateAccessionData {
     metadata_location_ar_id: Option<i32>,
     metadata_creator_en_id: Option<i32>,
     metadata_creator_ar_id: Option<i32>,
+    metadata_contributor_en_ids: Vec<i32>,
+    metadata_contributor_role_en_ids: Vec<Option<i32>>,
+    metadata_contributor_ar_ids: Vec<i32>,
+    metadata_contributor_role_ar_ids: Vec<Option<i32>>,
 }
 
 impl DBAccessionsRepo {
@@ -171,6 +179,28 @@ impl DBAccessionsRepo {
                 DublinMetadataSubjectsEn::insert_many(subject_links)
                     .exec(&txn)
                     .await?;
+                if !accession_data.metadata_contributor_en_ids.is_empty() {
+                    let mut contributor_links: Vec<DublinMetadataEnContributorsActiveModel> =
+                        vec![];
+                    for (i, contributor_id) in
+                        accession_data.metadata_contributor_en_ids.iter().enumerate()
+                    {
+                        let role_id = accession_data
+                            .metadata_contributor_role_en_ids
+                            .get(i)
+                            .copied()
+                            .flatten();
+                        let contributor_link = DublinMetadataEnContributorsActiveModel {
+                            metadata_id: ActiveValue::Set(metadata_id),
+                            contributor_id: ActiveValue::Set(*contributor_id),
+                            role_id: ActiveValue::Set(role_id),
+                        };
+                        contributor_links.push(contributor_link);
+                    }
+                    DublinMetadataEnContributors::insert_many(contributor_links)
+                        .exec(&txn)
+                        .await?;
+                }
                 (Some(metadata_id), None)
             }
             MetadataLanguage::Arabic => {
@@ -194,6 +224,28 @@ impl DBAccessionsRepo {
                 DublinMetadataSubjectsAr::insert_many(subject_links)
                     .exec(&txn)
                     .await?;
+                if !accession_data.metadata_contributor_ar_ids.is_empty() {
+                    let mut contributor_links: Vec<DublinMetadataArContributorsActiveModel> =
+                        vec![];
+                    for (i, contributor_id) in
+                        accession_data.metadata_contributor_ar_ids.iter().enumerate()
+                    {
+                        let role_id = accession_data
+                            .metadata_contributor_role_ar_ids
+                            .get(i)
+                            .copied()
+                            .flatten();
+                        let contributor_link = DublinMetadataArContributorsActiveModel {
+                            metadata_id: ActiveValue::Set(metadata_id),
+                            contributor_id: ActiveValue::Set(*contributor_id),
+                            role_id: ActiveValue::Set(role_id),
+                        };
+                        contributor_links.push(contributor_link);
+                    }
+                    DublinMetadataArContributors::insert_many(contributor_links)
+                        .exec(&txn)
+                        .await?;
+                }
                 (None, Some(metadata_id))
             }
         };
@@ -249,6 +301,12 @@ impl AccessionsRepo for DBAccessionsRepo {
             metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
             metadata_creator_en_id: create_accession_request.metadata_creator_en_id,
             metadata_creator_ar_id: create_accession_request.metadata_creator_ar_id,
+            metadata_contributor_en_ids: create_accession_request.metadata_contributor_en_ids,
+            metadata_contributor_role_en_ids: create_accession_request
+                .metadata_contributor_role_en_ids,
+            metadata_contributor_ar_ids: create_accession_request.metadata_contributor_ar_ids,
+            metadata_contributor_role_ar_ids: create_accession_request
+                .metadata_contributor_role_ar_ids,
         };
         self._create_one(accession_data).await
     }
@@ -275,6 +333,12 @@ impl AccessionsRepo for DBAccessionsRepo {
             metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
             metadata_creator_en_id: create_accession_request.metadata_creator_en_id,
             metadata_creator_ar_id: create_accession_request.metadata_creator_ar_id,
+            metadata_contributor_en_ids: create_accession_request.metadata_contributor_en_ids,
+            metadata_contributor_role_en_ids: create_accession_request
+                .metadata_contributor_role_en_ids,
+            metadata_contributor_ar_ids: create_accession_request.metadata_contributor_ar_ids,
+            metadata_contributor_role_ar_ids: create_accession_request
+                .metadata_contributor_role_ar_ids,
         };
         self._create_one(accession_data).await
     }
@@ -413,6 +477,36 @@ impl AccessionsRepo for DBAccessionsRepo {
                         DublinMetadataSubjectsEn::insert_many(new_subject_links)
                             .exec(&txn)
                             .await?;
+                        DublinMetadataEnContributors::delete_many()
+                            .filter(<entity::dublin_metadata_en_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
+                            .exec(&txn)
+                            .await?;
+                        if !update_accession_request.metadata_contributor_en_ids.is_empty() {
+                            let mut new_contributor_links: Vec<
+                                DublinMetadataEnContributorsActiveModel,
+                            > = vec![];
+                            for (i, contributor_id) in update_accession_request
+                                .metadata_contributor_en_ids
+                                .iter()
+                                .enumerate()
+                            {
+                                let role_id = update_accession_request
+                                    .metadata_contributor_role_en_ids
+                                    .get(i)
+                                    .copied()
+                                    .flatten();
+                                let contributor_link =
+                                    DublinMetadataEnContributorsActiveModel {
+                                        metadata_id: ActiveValue::Set(metadata_id),
+                                        contributor_id: ActiveValue::Set(*contributor_id),
+                                        role_id: ActiveValue::Set(role_id),
+                                    };
+                                new_contributor_links.push(contributor_link);
+                            }
+                            DublinMetadataEnContributors::insert_many(new_contributor_links)
+                                .exec(&txn)
+                                .await?;
+                        }
                         accession_active.dublin_metadata_en = ActiveValue::Set(Some(metadata_id));
                     }
                     MetadataLanguage::Arabic => {
@@ -446,6 +540,36 @@ impl AccessionsRepo for DBAccessionsRepo {
                         DublinMetadataSubjectsAr::insert_many(new_subject_links)
                             .exec(&txn)
                             .await?;
+                        DublinMetadataArContributors::delete_many()
+                            .filter(<entity::dublin_metadata_ar_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
+                            .exec(&txn)
+                            .await?;
+                        if !update_accession_request.metadata_contributor_ar_ids.is_empty() {
+                            let mut new_contributor_links: Vec<
+                                DublinMetadataArContributorsActiveModel,
+                            > = vec![];
+                            for (i, contributor_id) in update_accession_request
+                                .metadata_contributor_ar_ids
+                                .iter()
+                                .enumerate()
+                            {
+                                let role_id = update_accession_request
+                                    .metadata_contributor_role_ar_ids
+                                    .get(i)
+                                    .copied()
+                                    .flatten();
+                                let contributor_link =
+                                    DublinMetadataArContributorsActiveModel {
+                                        metadata_id: ActiveValue::Set(metadata_id),
+                                        contributor_id: ActiveValue::Set(*contributor_id),
+                                        role_id: ActiveValue::Set(role_id),
+                                    };
+                                new_contributor_links.push(contributor_link);
+                            }
+                            DublinMetadataArContributors::insert_many(new_contributor_links)
+                                .exec(&txn)
+                                .await?;
+                        }
                         accession_active.dublin_metadata_ar = ActiveValue::Set(Some(metadata_id));
                     }
                 };
