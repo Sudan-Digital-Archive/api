@@ -11,6 +11,7 @@ use crate::models::request::{
     CreateAccessionRequest, UpdateAccessionRequest,
 };
 use crate::models::response::{GetOneAccessionResponse, ListAccessionsResponse};
+use crate::services::accessions_service::MetadataValidationParams;
 use ::entity::sea_orm_active_enums::Role;
 use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::StatusCode;
@@ -128,18 +129,18 @@ async fn create_accession_crawl(
     if let Err(response) = state
         .accessions_service
         .clone()
-        .validate_metadata_references(
-            payload.metadata_subjects.clone(),
-            payload.metadata_language,
-            payload.metadata_location_en_id,
-            payload.metadata_location_ar_id,
-            payload.metadata_creator_en_id,
-            payload.metadata_creator_ar_id,
-            payload.metadata_contributor_en_ids.clone(),
-            &payload.metadata_contributor_role_en_ids,
-            payload.metadata_contributor_ar_ids.clone(),
-            &payload.metadata_contributor_role_ar_ids,
-        )
+        .validate_metadata_references(MetadataValidationParams {
+            subjects: payload.metadata_subjects.clone(),
+            metadata_language: payload.metadata_language,
+            metadata_location_en_id: payload.metadata_location_en_id,
+            metadata_location_ar_id: payload.metadata_location_ar_id,
+            metadata_creator_en_id: payload.metadata_creator_en_id,
+            metadata_creator_ar_id: payload.metadata_creator_ar_id,
+            metadata_contributor_en_ids: payload.metadata_contributor_en_ids.clone(),
+            metadata_contributor_role_en_ids: payload.metadata_contributor_role_en_ids.clone(),
+            metadata_contributor_ar_ids: payload.metadata_contributor_ar_ids.clone(),
+            metadata_contributor_role_ar_ids: payload.metadata_contributor_role_ar_ids.clone(),
+        })
         .await
     {
         return response;
@@ -315,18 +316,18 @@ async fn update_accession(
     if let Err(response) = state
         .accessions_service
         .clone()
-        .validate_metadata_references(
-            payload.metadata_subjects.clone(),
-            payload.metadata_language,
-            payload.metadata_location_en_id,
-            payload.metadata_location_ar_id,
-            payload.metadata_creator_en_id,
-            payload.metadata_creator_ar_id,
-            payload.metadata_contributor_en_ids.clone(),
-            &payload.metadata_contributor_role_en_ids,
-            payload.metadata_contributor_ar_ids.clone(),
-            &payload.metadata_contributor_role_ar_ids,
-        )
+        .validate_metadata_references(MetadataValidationParams {
+            subjects: payload.metadata_subjects.clone(),
+            metadata_language: payload.metadata_language,
+            metadata_location_en_id: payload.metadata_location_en_id,
+            metadata_location_ar_id: payload.metadata_location_ar_id,
+            metadata_creator_en_id: payload.metadata_creator_en_id,
+            metadata_creator_ar_id: payload.metadata_creator_ar_id,
+            metadata_contributor_en_ids: payload.metadata_contributor_en_ids.clone(),
+            metadata_contributor_role_en_ids: payload.metadata_contributor_role_en_ids.clone(),
+            metadata_contributor_ar_ids: payload.metadata_contributor_ar_ids.clone(),
+            metadata_contributor_role_ar_ids: payload.metadata_contributor_role_ar_ids.clone(),
+        })
         .await
     {
         return response;

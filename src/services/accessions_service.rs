@@ -46,6 +46,19 @@ enum MultiPartExtractionStep {
     ExpectFile,
 }
 
+pub(crate) struct MetadataValidationParams {
+    pub(crate) subjects: Vec<i32>,
+    pub(crate) metadata_language: MetadataLanguage,
+    pub(crate) metadata_location_en_id: Option<i32>,
+    pub(crate) metadata_location_ar_id: Option<i32>,
+    pub(crate) metadata_creator_en_id: Option<i32>,
+    pub(crate) metadata_creator_ar_id: Option<i32>,
+    pub(crate) metadata_contributor_en_ids: Vec<i32>,
+    pub(crate) metadata_contributor_role_en_ids: Vec<Option<i32>>,
+    pub(crate) metadata_contributor_ar_ids: Vec<i32>,
+    pub(crate) metadata_contributor_role_ar_ids: Vec<Option<i32>>,
+}
+
 /// Service for managing archival accessions and their associated web crawls.
 /// Uses dynamic traits for dependency injection
 #[derive(Clone)]
@@ -673,25 +686,15 @@ impl AccessionsService {
         self.upload_from_stream(key, field, content_type).await
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn validate_metadata_references(
         self,
-        subjects: Vec<i32>,
-        metadata_language: MetadataLanguage,
-        metadata_location_en_id: Option<i32>,
-        metadata_location_ar_id: Option<i32>,
-        metadata_creator_en_id: Option<i32>,
-        metadata_creator_ar_id: Option<i32>,
-        metadata_contributor_en_ids: Vec<i32>,
-        metadata_contributor_role_en_ids: &[Option<i32>],
-        metadata_contributor_ar_ids: Vec<i32>,
-        metadata_contributor_role_ar_ids: &[Option<i32>],
+        params: MetadataValidationParams,
     ) -> Result<(), Response> {
-        if !subjects.is_empty() {
+        if !params.subjects.is_empty() {
             let subjects_exist = self
                 .subjects_service
                 .clone()
-                .verify_subjects_exist(subjects, metadata_language)
+                .verify_subjects_exist(params.subjects, params.metadata_language)
                 .await;
             match subjects_exist {
                 Err(err) => {
@@ -710,17 +713,17 @@ impl AccessionsService {
         }
 
         let mut location_ids: Vec<i32> = vec![];
-        if let Some(en_id) = metadata_location_en_id {
+        if let Some(en_id) = params.metadata_location_en_id {
             location_ids.push(en_id);
         }
-        if let Some(ar_id) = metadata_location_ar_id {
+        if let Some(ar_id) = params.metadata_location_ar_id {
             location_ids.push(ar_id);
         }
         if !location_ids.is_empty() {
             let locations_exist = self
                 .locations_service
                 .clone()
-                .verify_locations_exist(location_ids, metadata_language)
+                .verify_locations_exist(location_ids, params.metadata_language)
                 .await;
             match locations_exist {
                 Err(err) => {
@@ -739,17 +742,17 @@ impl AccessionsService {
         }
 
         let mut creator_ids: Vec<i32> = vec![];
-        if let Some(en_id) = metadata_creator_en_id {
+        if let Some(en_id) = params.metadata_creator_en_id {
             creator_ids.push(en_id);
         }
-        if let Some(ar_id) = metadata_creator_ar_id {
+        if let Some(ar_id) = params.metadata_creator_ar_id {
             creator_ids.push(ar_id);
         }
         if !creator_ids.is_empty() {
             let creators_exist = self
                 .creators_service
                 .clone()
-                .verify_creators_exist(creator_ids, metadata_language)
+                .verify_creators_exist(creator_ids, params.metadata_language)
                 .await;
             match creators_exist {
                 Err(err) => {
@@ -767,8 +770,9 @@ impl AccessionsService {
             }
         }
 
-        if !metadata_contributor_en_ids.is_empty()
-            && metadata_contributor_en_ids.len() != metadata_contributor_role_en_ids.len()
+        if !params.metadata_contributor_en_ids.is_empty()
+            && params.metadata_contributor_en_ids.len()
+                != params.metadata_contributor_role_en_ids.len()
         {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -776,8 +780,9 @@ impl AccessionsService {
             )
                 .into_response());
         }
-        if !metadata_contributor_ar_ids.is_empty()
-            && metadata_contributor_ar_ids.len() != metadata_contributor_role_ar_ids.len()
+        if !params.metadata_contributor_ar_ids.is_empty()
+            && params.metadata_contributor_ar_ids.len()
+                != params.metadata_contributor_role_ar_ids.len()
         {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -787,14 +792,14 @@ impl AccessionsService {
         }
 
         let mut contributor_ids: Vec<i32> = vec![];
-        contributor_ids.extend(metadata_contributor_en_ids.clone());
-        contributor_ids.extend(metadata_contributor_ar_ids.clone());
+        contributor_ids.extend(params.metadata_contributor_en_ids.clone());
+        contributor_ids.extend(params.metadata_contributor_ar_ids.clone());
 
         let mut role_ids: Vec<i32> = vec![];
-        for role_id in metadata_contributor_role_en_ids.iter().flatten() {
+        for role_id in params.metadata_contributor_role_en_ids.iter().flatten() {
             role_ids.push(*role_id);
         }
-        for role_id in metadata_contributor_role_ar_ids.iter().flatten() {
+        for role_id in params.metadata_contributor_role_ar_ids.iter().flatten() {
             role_ids.push(*role_id);
         }
 
@@ -802,7 +807,7 @@ impl AccessionsService {
             let contributors_exist = self
                 .contributors_service
                 .clone()
-                .verify_contributors_exist(contributor_ids.clone(), metadata_language)
+                .verify_contributors_exist(contributor_ids.clone(), params.metadata_language)
                 .await;
             match contributors_exist {
                 Err(err) => {
@@ -824,7 +829,7 @@ impl AccessionsService {
             let roles_exist = self
                 .contributors_service
                 .clone()
-                .verify_roles_exist(role_ids.clone(), metadata_language)
+                .verify_roles_exist(role_ids.clone(), params.metadata_language)
                 .await;
             match roles_exist {
                 Err(err) => {
@@ -911,18 +916,22 @@ impl AccessionsService {
 
                 info!("Extracted and validated metadata JSON");
                 self.clone()
-                    .validate_metadata_references(
-                        parsed.metadata_subjects.clone(),
-                        parsed.metadata_language,
-                        parsed.metadata_location_en_id,
-                        parsed.metadata_location_ar_id,
-                        parsed.metadata_creator_en_id,
-                        parsed.metadata_creator_ar_id,
-                        parsed.metadata_contributor_en_ids.clone(),
-                        &parsed.metadata_contributor_role_en_ids,
-                        parsed.metadata_contributor_ar_ids.clone(),
-                        &parsed.metadata_contributor_role_ar_ids,
-                    )
+                    .validate_metadata_references(MetadataValidationParams {
+                        subjects: parsed.metadata_subjects.clone(),
+                        metadata_language: parsed.metadata_language,
+                        metadata_location_en_id: parsed.metadata_location_en_id,
+                        metadata_location_ar_id: parsed.metadata_location_ar_id,
+                        metadata_creator_en_id: parsed.metadata_creator_en_id,
+                        metadata_creator_ar_id: parsed.metadata_creator_ar_id,
+                        metadata_contributor_en_ids: parsed.metadata_contributor_en_ids.clone(),
+                        metadata_contributor_role_en_ids: parsed
+                            .metadata_contributor_role_en_ids
+                            .clone(),
+                        metadata_contributor_ar_ids: parsed.metadata_contributor_ar_ids.clone(),
+                        metadata_contributor_role_ar_ids: parsed
+                            .metadata_contributor_role_ar_ids
+                            .clone(),
+                    })
                     .await?;
 
                 metadata_payload = Some(parsed);
