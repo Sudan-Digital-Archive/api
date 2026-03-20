@@ -11,6 +11,7 @@ use crate::models::request::{
     CreateAccessionRequest, UpdateAccessionRequest,
 };
 use crate::models::response::{GetOneAccessionResponse, ListAccessionsResponse};
+use crate::services::accessions_service::MetadataValidationParams;
 use ::entity::sea_orm_active_enums::Role;
 use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::StatusCode;
@@ -71,12 +72,7 @@ async fn create_accession_raw(
     let create_accession_raw_request = match state
         .accessions_service
         .clone()
-        .extract_accession_from_multipart_form(
-            multipart,
-            state.subjects_service.clone(),
-            state.locations_service.clone(),
-            state.creators_service.clone(),
-        )
+        .extract_accession_from_multipart_form(multipart)
         .await
     {
         Ok(data) => data,
@@ -130,68 +126,24 @@ async fn create_accession_crawl(
     if let Err(err) = payload.validate() {
         return (StatusCode::BAD_REQUEST, err.to_string()).into_response();
     }
-    let subjects_exist = state
-        .subjects_service
+    if let Err(response) = state
+        .accessions_service
         .clone()
-        .verify_subjects_exist(payload.metadata_subjects.clone(), payload.metadata_language)
-        .await;
-    match subjects_exist {
-        Err(err) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-        }
-        Ok(flag) => {
-            if !flag {
-                return (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response();
-            }
-        }
-    };
-    let mut location_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_location_en_id {
-        location_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_location_ar_id {
-        location_ids.push(ar_id);
-    }
-    if !location_ids.is_empty() {
-        let locations_exist = state
-            .locations_service
-            .clone()
-            .verify_locations_exist(location_ids, payload.metadata_language)
-            .await;
-        match locations_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
-                }
-            }
-        };
-    }
-    let mut creator_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_creator_en_id {
-        creator_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_creator_ar_id {
-        creator_ids.push(ar_id);
-    }
-    if !creator_ids.is_empty() {
-        let creators_exist = state
-            .creators_service
-            .clone()
-            .verify_creators_exist(creator_ids, payload.metadata_language)
-            .await;
-        match creators_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Creators do not exist").into_response();
-                }
-            }
-        };
+        .validate_metadata_references(MetadataValidationParams {
+            subjects: payload.metadata_subjects.clone(),
+            metadata_language: payload.metadata_language,
+            metadata_location_en_id: payload.metadata_location_en_id,
+            metadata_location_ar_id: payload.metadata_location_ar_id,
+            metadata_creator_en_id: payload.metadata_creator_en_id,
+            metadata_creator_ar_id: payload.metadata_creator_ar_id,
+            metadata_contributor_en_ids: payload.metadata_contributor_en_ids.clone(),
+            metadata_contributor_role_en_ids: payload.metadata_contributor_role_en_ids.clone(),
+            metadata_contributor_ar_ids: payload.metadata_contributor_ar_ids.clone(),
+            metadata_contributor_role_ar_ids: payload.metadata_contributor_role_ar_ids.clone(),
+        })
+        .await
+    {
+        return response;
     }
     tokio::spawn(async move {
         state
@@ -361,68 +313,24 @@ async fn update_accession(
     if !validate_at_least_researcher(&authenticated_user.role) {
         return (StatusCode::FORBIDDEN, "Must have at least researcher role").into_response();
     }
-    let subjects_exist = state
-        .subjects_service
+    if let Err(response) = state
+        .accessions_service
         .clone()
-        .verify_subjects_exist(payload.metadata_subjects.clone(), payload.metadata_language)
-        .await;
-    match subjects_exist {
-        Err(err) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-        }
-        Ok(flag) => {
-            if !flag {
-                return (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response();
-            }
-        }
-    };
-    let mut location_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_location_en_id {
-        location_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_location_ar_id {
-        location_ids.push(ar_id);
-    }
-    if !location_ids.is_empty() {
-        let locations_exist = state
-            .locations_service
-            .clone()
-            .verify_locations_exist(location_ids, payload.metadata_language)
-            .await;
-        match locations_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Locations do not exist").into_response();
-                }
-            }
-        };
-    }
-    let mut creator_ids: Vec<i32> = vec![];
-    if let Some(en_id) = payload.metadata_creator_en_id {
-        creator_ids.push(en_id);
-    }
-    if let Some(ar_id) = payload.metadata_creator_ar_id {
-        creator_ids.push(ar_id);
-    }
-    if !creator_ids.is_empty() {
-        let creators_exist = state
-            .creators_service
-            .clone()
-            .verify_creators_exist(creator_ids, payload.metadata_language)
-            .await;
-        match creators_exist {
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-            Ok(flag) => {
-                if !flag {
-                    return (StatusCode::BAD_REQUEST, "Creators do not exist").into_response();
-                }
-            }
-        };
+        .validate_metadata_references(MetadataValidationParams {
+            subjects: payload.metadata_subjects.clone(),
+            metadata_language: payload.metadata_language,
+            metadata_location_en_id: payload.metadata_location_en_id,
+            metadata_location_ar_id: payload.metadata_location_ar_id,
+            metadata_creator_en_id: payload.metadata_creator_en_id,
+            metadata_creator_ar_id: payload.metadata_creator_ar_id,
+            metadata_contributor_en_ids: payload.metadata_contributor_en_ids.clone(),
+            metadata_contributor_role_en_ids: payload.metadata_contributor_role_en_ids.clone(),
+            metadata_contributor_ar_ids: payload.metadata_contributor_ar_ids.clone(),
+            metadata_contributor_role_ar_ids: payload.metadata_contributor_role_ar_ids.clone(),
+        })
+        .await
+    {
+        return response;
     }
     state.accessions_service.update_one(id, payload).await
 }
@@ -510,6 +418,10 @@ mod tests {
                     metadata_location_ar_id: None,
                     metadata_creator_en_id: None,
                     metadata_creator_ar_id: None,
+                    metadata_contributor_en_ids: vec![],
+                    metadata_contributor_role_en_ids: vec![],
+                    metadata_contributor_ar_ids: vec![],
+                    metadata_contributor_role_ar_ids: vec![],
                 },
                 Uuid::new_v4(),
             )
@@ -537,6 +449,10 @@ mod tests {
                     metadata_location_ar_id: None,
                     metadata_creator_en_id: None,
                     metadata_creator_ar_id: None,
+                    metadata_contributor_en_ids: vec![],
+                    metadata_contributor_role_en_ids: vec![],
+                    metadata_contributor_ar_ids: vec![],
+                    metadata_contributor_role_ar_ids: vec![],
                 },
                 Uuid::new_v4(),
             )

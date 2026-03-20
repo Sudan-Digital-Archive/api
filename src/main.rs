@@ -104,6 +104,9 @@ async fn main() {
     )
     .await
     .expect("Could not create DigitalOcean Spaces repo");
+    let subjects_service = SubjectsService {
+        subjects_repo: Arc::new(subjects_repo.clone()),
+    };
     let locations_service = LocationsService {
         locations_repo: Arc::new(locations_repo),
     };
@@ -120,14 +123,15 @@ async fn main() {
         browsertrix_repo: Arc::new(http_btrix_repo),
         emails_repo: Arc::new(emails_repo.clone()),
         s3_repo: Arc::new(digital_ocean_spaces_repo),
+        subjects_service: subjects_service.clone(),
+        locations_service: locations_service.clone(),
+        creators_service: creators_service.clone(),
+        contributors_service: contributors_service.clone(),
     };
     let auth_service = AuthService {
         auth_repo: Arc::new(auth_repo),
         emails_repo: Arc::new(emails_repo),
         jwt_cookie_domain: app_config.jwt_cookie_domain,
-    };
-    let subjects_service = SubjectsService {
-        subjects_repo: Arc::new(subjects_repo.clone()),
     };
     let relations_service = RelationsService {
         relations_repo: Arc::new(relations_repo),

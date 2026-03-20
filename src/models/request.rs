@@ -35,6 +35,18 @@ pub struct CreateAccessionRequest {
     pub metadata_location_ar_id: Option<i32>,
     pub metadata_creator_en_id: Option<i32>,
     pub metadata_creator_ar_id: Option<i32>,
+    #[serde(default)]
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_en_ids: Vec<i32>,
+    #[serde(default)]
+    #[schema(example = json!([null, 1, null]))]
+    pub metadata_contributor_role_en_ids: Vec<Option<i32>>,
+    #[serde(default)]
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_ar_ids: Vec<i32>,
+    #[serde(default)]
+    #[schema(example = json!([null, 1, null]))]
+    pub metadata_contributor_role_ar_ids: Vec<Option<i32>>,
 }
 
 /// Request for creating a new accession from raw file + metadata.
@@ -58,6 +70,18 @@ pub struct CreateAccessionRequestRaw {
     pub metadata_location_ar_id: Option<i32>,
     pub metadata_creator_en_id: Option<i32>,
     pub metadata_creator_ar_id: Option<i32>,
+    #[serde(default)]
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_en_ids: Vec<i32>,
+    #[serde(default)]
+    #[schema(example = json!([null, 1, null]))]
+    pub metadata_contributor_role_en_ids: Vec<Option<i32>>,
+    #[serde(default)]
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_ar_ids: Vec<i32>,
+    #[serde(default)]
+    #[schema(example = json!([null, 1, null]))]
+    pub metadata_contributor_role_ar_ids: Vec<Option<i32>>,
 }
 
 /// Request for creating a new accession from raw file + metadata via multipart upload.
@@ -228,6 +252,18 @@ pub struct UpdateAccessionRequest {
     pub metadata_location_ar_id: Option<i32>,
     pub metadata_creator_en_id: Option<i32>,
     pub metadata_creator_ar_id: Option<i32>,
+    #[serde(default)]
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_en_ids: Vec<i32>,
+    #[serde(default)]
+    #[schema(example = json!([null, 1, null]))]
+    pub metadata_contributor_role_en_ids: Vec<Option<i32>>,
+    #[serde(default)]
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_ar_ids: Vec<i32>,
+    #[serde(default)]
+    #[schema(example = json!([null, 1, null]))]
+    pub metadata_contributor_role_ar_ids: Vec<Option<i32>>,
 }
 
 /// Request for updating a subject category.
