@@ -5,6 +5,7 @@
 use crate::app_factory::{create_app, AppState};
 use crate::auth::JWT_KEYS;
 use crate::config::AppConfig;
+use crate::models::accessions::AccessionError;
 use crate::models::auth::JWTClaims;
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{
@@ -93,7 +94,7 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
         Ok(mock_paginated_en())
     }
 
-    async fn delete_one(&self, _id: i32) -> Result<Option<AccessionModel>, DbErr> {
+    async fn delete_one(&self, _id: i32) -> Result<Option<AccessionModel>, AccessionError> {
         Ok(Some(mock_one_accession()))
     }
 
