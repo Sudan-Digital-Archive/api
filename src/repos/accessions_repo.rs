@@ -22,12 +22,14 @@ use entity::dublin_metadata_ar::ActiveModel as DublinMetadataArActiveModel;
 use entity::dublin_metadata_ar::Entity as DublinMetadataAr;
 use entity::dublin_metadata_ar_contributors::ActiveModel as DublinMetadataArContributorsActiveModel;
 use entity::dublin_metadata_ar_contributors::Entity as DublinMetadataArContributors;
+use entity::dublin_metadata_ar_relations::Entity as DublinMetadataArRelations;
 use entity::dublin_metadata_ar_subjects::ActiveModel as DublinMetadataSubjectsArActiveModel;
 use entity::dublin_metadata_ar_subjects::Entity as DublinMetadataSubjectsAr;
 use entity::dublin_metadata_en::ActiveModel as DublinMetadataEnActiveModel;
 use entity::dublin_metadata_en::Entity as DublinMetadataEn;
 use entity::dublin_metadata_en_contributors::ActiveModel as DublinMetadataEnContributorsActiveModel;
 use entity::dublin_metadata_en_contributors::Entity as DublinMetadataEnContributors;
+use entity::dublin_metadata_en_relations::Entity as DublinMetadataEnRelations;
 use entity::dublin_metadata_en_subjects::ActiveModel as DublinMetadataSubjectsEnActiveModel;
 use entity::dublin_metadata_en_subjects::Entity as DublinMetadataSubjectsEn;
 use entity::sea_orm_active_enums::{CrawlStatus, DublinMetadataFormat};
@@ -35,6 +37,8 @@ use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
     PaginatorTrait, QueryFilter, TransactionTrait, TryIntoModel,
 };
+
+use crate::models::accessions::AccessionError;
 
 use uuid::Uuid;
 
@@ -96,7 +100,7 @@ pub trait AccessionsRepo: Send + Sync {
     ///
     /// # Arguments
     /// * `id` - The ID of the accession to delete
-    async fn delete_one(&self, id: i32) -> Result<Option<AccessionModel>, DbErr>;
+    async fn delete_one(&self, id: i32) -> Result<Option<AccessionModel>, AccessionError>;
 
     /// Updates an existing accession record with new metadata.
     ///
@@ -398,36 +402,84 @@ impl AccessionsRepo for DBAccessionsRepo {
         Ok((accession_pages.fetch_page(params.page).await?, num_pages))
     }
 
-    async fn delete_one(&self, id: i32) -> Result<Option<AccessionModel>, DbErr> {
-        let txn = self.db_session.begin().await?;
-        let accession = Accession::find_by_id(id).one(&txn).await?;
-        Accession::delete_by_id(id).exec(&txn).await?;
+    async fn delete_one(&self, id: i32) -> Result<Option<AccessionModel>, AccessionError> {
+        let txn = match self.db_session.begin().await {
+            Ok(txn) => txn,
+            Err(err) => return Err(AccessionError::ForeignKeyViolation(err.to_string())),
+        };
+        let accession = match Accession::find_by_id(id).one(&txn).await {
+            Ok(acc) => acc,
+            Err(err) => return Err(AccessionError::ForeignKeyViolation(err.to_string())),
+        };
         match accession {
             Some(accession_record) => {
                 if let Some(metadata_id) = accession_record.dublin_metadata_en {
-                    let metadata_en = DublinMetadataEn::find_by_id(metadata_id).one(&txn).await?;
+                    let metadata_en =
+                        match DublinMetadataEn::find_by_id(metadata_id).one(&txn).await {
+                            Ok(m) => m,
+                            Err(err) => {
+                                return Err(AccessionError::ForeignKeyViolation(err.to_string()))
+                            }
+                        };
                     if let Some(metadata_record) = metadata_en {
                         DublinMetadataSubjectsEn::delete_many()
                             .filter(<entity::dublin_metadata_en_subjects::Entity as EntityTrait>::Column::MetadataId.eq(metadata_record.id))
                             .exec(&txn)
-                            .await?;
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
+                        DublinMetadataEnContributors::delete_many()
+                            .filter(<entity::dublin_metadata_en_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_record.id))
+                            .exec(&txn)
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
+                        DublinMetadataEnRelations::delete_many()
+                            .filter(<entity::dublin_metadata_en_relations::Entity as EntityTrait>::Column::MetadataId.eq(metadata_record.id))
+                            .exec(&txn)
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                         DublinMetadataEn::delete_by_id(metadata_id)
                             .exec(&txn)
-                            .await?;
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                     }
                 }
                 if let Some(metadata_id) = accession_record.dublin_metadata_ar {
-                    let metadata_ar = DublinMetadataAr::find_by_id(metadata_id).one(&txn).await?;
+                    let metadata_ar =
+                        match DublinMetadataAr::find_by_id(metadata_id).one(&txn).await {
+                            Ok(m) => m,
+                            Err(err) => {
+                                return Err(AccessionError::ForeignKeyViolation(err.to_string()))
+                            }
+                        };
                     if let Some(metadata_record) = metadata_ar {
-                        DublinMetadataSubjectsAr::delete_many().filter(<entity::dublin_metadata_ar_subjects::Entity as EntityTrait>::Column::MetadataId.eq(metadata_record.id))
+                        DublinMetadataSubjectsAr::delete_many()
+                            .filter(<entity::dublin_metadata_ar_subjects::Entity as EntityTrait>::Column::MetadataId.eq(metadata_record.id))
                             .exec(&txn)
-                            .await?;
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
+                        DublinMetadataArContributors::delete_many()
+                            .filter(<entity::dublin_metadata_ar_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_record.id))
+                            .exec(&txn)
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
+                        DublinMetadataArRelations::delete_many()
+                            .filter(<entity::dublin_metadata_ar_relations::Entity as EntityTrait>::Column::MetadataId.eq(metadata_record.id))
+                            .exec(&txn)
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                         DublinMetadataAr::delete_by_id(metadata_id)
                             .exec(&txn)
-                            .await?;
+                            .await
+                            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                     }
                 }
-                txn.commit().await?;
+                Accession::delete_by_id(id)
+                    .exec(&txn)
+                    .await
+                    .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
+                txn.commit()
+                    .await
+                    .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                 Ok(Some(accession_record))
             }
             None => Ok(None),

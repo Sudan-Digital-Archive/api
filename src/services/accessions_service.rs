@@ -385,7 +385,7 @@ impl AccessionsService {
         match delete_result {
             Err(err) => {
                 error!(%err, "Error occurred deleting accession");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
+                err.into_response()
             }
             Ok(delete_result) => {
                 if let Some(accession) = delete_result {
