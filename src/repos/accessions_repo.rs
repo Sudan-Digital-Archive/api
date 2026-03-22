@@ -118,6 +118,8 @@ pub trait AccessionsRepo: Send + Sync {
         accession_id: i32,
         metadata_language: MetadataLanguage,
     ) -> Result<Option<i32>, DbErr>;
+
+    async fn has_incoming_relations(&self, accession_id: i32) -> Result<bool, AccessionError>;
 }
 
 /// A private struct that mirrors the fields required to create an accession
@@ -403,6 +405,12 @@ impl AccessionsRepo for DBAccessionsRepo {
     }
 
     async fn delete_one(&self, id: i32) -> Result<Option<AccessionModel>, AccessionError> {
+        if self.has_incoming_relations(id).await? {
+            return Err(AccessionError::ForeignKeyViolation(
+                "Cannot delete accession: other accessions depend on this record".to_string(),
+            ));
+        }
+
         let txn = match self.db_session.begin().await {
             Ok(txn) => txn,
             Err(err) => return Err(AccessionError::ForeignKeyViolation(err.to_string())),
@@ -659,5 +667,30 @@ impl AccessionsRepo for DBAccessionsRepo {
             MetadataLanguage::English => accession.and_then(|a| a.dublin_metadata_en),
             MetadataLanguage::Arabic => accession.and_then(|a| a.dublin_metadata_ar),
         })
+    }
+
+    async fn has_incoming_relations(&self, accession_id: i32) -> Result<bool, AccessionError> {
+        use entity::dublin_metadata_relation_ar::Column as DublinMetadataRelationArColumn;
+        use entity::dublin_metadata_relation_ar::Entity as DublinMetadataRelationAr;
+        use entity::dublin_metadata_relation_en::Column as DublinMetadataRelationEnColumn;
+        use entity::dublin_metadata_relation_en::Entity as DublinMetadataRelationEn;
+
+        let has_en = DublinMetadataRelationEn::find()
+            .filter(DublinMetadataRelationEnColumn::RelatedAccessionId.eq(accession_id))
+            .one(&self.db_session)
+            .await
+            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
+
+        if has_en.is_some() {
+            return Ok(true);
+        }
+
+        let has_ar = DublinMetadataRelationAr::find()
+            .filter(DublinMetadataRelationArColumn::RelatedAccessionId.eq(accession_id))
+            .one(&self.db_session)
+            .await
+            .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
+
+        Ok(has_ar.is_some())
     }
 }

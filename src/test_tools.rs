@@ -113,6 +113,10 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
     ) -> Result<Option<i32>, DbErr> {
         Ok(Some(1))
     }
+
+    async fn has_incoming_relations(&self, _id: i32) -> Result<bool, AccessionError> {
+        Ok(false)
+    }
 }
 
 /// In-memory implementation of SubjectsRepo for testing.
