@@ -15,6 +15,7 @@ use entity::accession::ActiveModel as AccessionActiveModel;
 use entity::accession::Entity as Accession;
 use entity::accession::Model as AccessionModel;
 
+use crate::models::accessions::AccessionError;
 use entity::accessions_with_metadata;
 use entity::accessions_with_metadata::Entity as AccessionWithMetadata;
 use entity::accessions_with_metadata::Model as AccessionWithMetadataModel;
@@ -32,13 +33,15 @@ use entity::dublin_metadata_en_contributors::Entity as DublinMetadataEnContribut
 use entity::dublin_metadata_en_relations::Entity as DublinMetadataEnRelations;
 use entity::dublin_metadata_en_subjects::ActiveModel as DublinMetadataSubjectsEnActiveModel;
 use entity::dublin_metadata_en_subjects::Entity as DublinMetadataSubjectsEn;
+use entity::dublin_metadata_relation_ar::Column as DublinMetadataRelationArColumn;
+use entity::dublin_metadata_relation_ar::Entity as DublinMetadataRelationAr;
+use entity::dublin_metadata_relation_en::Column as DublinMetadataRelationEnColumn;
+use entity::dublin_metadata_relation_en::Entity as DublinMetadataRelationEn;
 use entity::sea_orm_active_enums::{CrawlStatus, DublinMetadataFormat};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
     PaginatorTrait, QueryFilter, TransactionTrait, TryIntoModel,
 };
-
-use crate::models::accessions::AccessionError;
 
 use uuid::Uuid;
 
@@ -670,11 +673,6 @@ impl AccessionsRepo for DBAccessionsRepo {
     }
 
     async fn has_incoming_relations(&self, accession_id: i32) -> Result<bool, AccessionError> {
-        use entity::dublin_metadata_relation_ar::Column as DublinMetadataRelationArColumn;
-        use entity::dublin_metadata_relation_ar::Entity as DublinMetadataRelationAr;
-        use entity::dublin_metadata_relation_en::Column as DublinMetadataRelationEnColumn;
-        use entity::dublin_metadata_relation_en::Entity as DublinMetadataRelationEn;
-
         let has_en = DublinMetadataRelationEn::find()
             .filter(DublinMetadataRelationEnColumn::RelatedAccessionId.eq(accession_id))
             .one(&self.db_session)
