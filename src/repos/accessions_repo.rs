@@ -413,6 +413,10 @@ impl AccessionsRepo for DBAccessionsRepo {
         };
         match accession {
             Some(accession_record) => {
+                Accession::delete_by_id(id)
+                    .exec(&txn)
+                    .await
+                    .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                 if let Some(metadata_id) = accession_record.dublin_metadata_en {
                     let metadata_en =
                         match DublinMetadataEn::find_by_id(metadata_id).one(&txn).await {
@@ -473,10 +477,6 @@ impl AccessionsRepo for DBAccessionsRepo {
                             .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                     }
                 }
-                Accession::delete_by_id(id)
-                    .exec(&txn)
-                    .await
-                    .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
                 txn.commit()
                     .await
                     .map_err(|e| AccessionError::ForeignKeyViolation(e.to_string()))?;
