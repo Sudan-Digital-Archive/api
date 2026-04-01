@@ -1055,11 +1055,13 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         title_en: Some("English Title".to_string()),
         description_en: Some("English Description".to_string()),
         location_en: Some("English Location".to_string()),
+        location_en_id: Some(1),
         creator_en_id: Some(1),
         creator_en: Some("English Creator".to_string()),
         title_ar: Some("Arabic Title".to_string()),
         description_ar: Some("Arabic Description".to_string()),
         location_ar: Some("Arabic Location".to_string()),
+        location_ar_id: Some(2),
         creator_ar_id: Some(2),
         creator_ar: Some("Arabic Creator".to_string()),
         subjects_en: Some(vec!["archive".to_string()]),
@@ -1071,15 +1073,21 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         dublin_metadata_format: DublinMetadataFormat::Wacz,
         s3_filename: Some("some_file.wacz".to_string()),
         contributors_en: Some(vec!["Paul McCartney".to_string()]),
+        contributor_en_ids: Some(vec![1]),
         contributor_roles_en: Some(vec!["singer".to_string()]),
+        contributor_role_en_ids: Some(vec![1]),
         contributors_ar: Some(vec!["بول ماك كارتني".to_string()]),
+        contributor_ar_ids: Some(vec![2]),
         contributor_roles_ar: Some(vec!["مغني".to_string()]),
+        contributor_role_ar_ids: Some(vec![2]),
         relations_en: Some(
             json!([{"id": 1, "relation_type": "has_part", "related_accession_id": 2}]),
         ),
         relations_ar: Some(
             json!([{"id": 2, "relation_type": "is_part_of", "related_accession_id": 3}]),
         ),
+        full_text_en: Some("test".to_string()),
+        full_text_ar: Some("اختبار".to_string()),
     }
 }
 
@@ -1098,6 +1106,8 @@ pub fn mock_one_accession() -> AccessionModel {
         is_private: true,
         dublin_metadata_format: DublinMetadataFormat::Wacz,
         s3_filename: Some("some_file.wacz".to_string()),
+        full_text_en: Some("test".to_string()),
+        full_text_ar: Some("اختبار".to_string()),
     }
 }
 

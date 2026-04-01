@@ -20,6 +20,7 @@ mod m20260302_224611_fix_s3_filename_removal;
 mod m20260304_195826_fix_full_text;
 mod m20260304_195900_add_contributor_tables;
 mod m20260312_120000_add_dublin_metadata_relations;
+mod m20260313_000000_add_filter_ids_to_view;
 
 pub struct Migrator;
 
@@ -48,6 +49,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260304_195826_fix_full_text::Migration),
             Box::new(m20260304_195900_add_contributor_tables::Migration),
             Box::new(m20260312_120000_add_dublin_metadata_relations::Migration),
+            Box::new(m20260313_000000_add_filter_ids_to_view::Migration),
         ]
     }
 }

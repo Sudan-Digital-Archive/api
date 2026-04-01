@@ -30,6 +30,7 @@ pub enum CrawlStatus {
 pub enum DublinMetadataFormat {
     #[sea_orm(string_value = "wacz")]
     #[serde(rename = "wacz")]
+    #[schema(rename = "wacz")]
     Wacz,
 }
 #[derive(
@@ -39,12 +40,15 @@ pub enum DublinMetadataFormat {
 pub enum Role {
     #[sea_orm(string_value = "admin")]
     #[serde(rename = "admin")]
+    #[schema(rename = "admin")]
     Admin,
     #[sea_orm(string_value = "researcher")]
     #[serde(rename = "researcher")]
+    #[schema(rename = "researcher")]
     Researcher,
     #[sea_orm(string_value = "contributor")]
     #[serde(rename = "contributor")]
+    #[schema(rename = "contributor")]
     Contributor,
 }
 
