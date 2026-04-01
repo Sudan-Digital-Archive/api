@@ -18,12 +18,23 @@ use entity::dublin_metadata_relation_en::ActiveModel as DublinMetadataRelationEn
 use entity::dublin_metadata_relation_en::Entity as DublinMetadataRelationEn;
 use entity::dublin_metadata_relation_en::Relation as DublinMetadataRelationEnRelation;
 use entity::sea_orm_active_enums::DublinMetadataRelationType;
-use sea_orm::DatabaseConnection;
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, DbErr, EntityTrait, JoinType, QueryFilter,
-    QuerySelect, RelationTrait, TransactionTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, JoinType,
+    QueryFilter, QuerySelect, RelationTrait, TransactionTrait,
 };
-use serde_json;
+
+fn relation_type_to_string(rt: DublinMetadataRelationType) -> String {
+    match rt {
+        DublinMetadataRelationType::HasPart => "has_part".to_string(),
+        DublinMetadataRelationType::IsPartOf => "is_part_of".to_string(),
+        DublinMetadataRelationType::HasVersion => "has_version".to_string(),
+        DublinMetadataRelationType::IsVersionOf => "is_version_of".to_string(),
+        DublinMetadataRelationType::References => "references".to_string(),
+        DublinMetadataRelationType::IsReferencedBy => "is_referenced_by".to_string(),
+        DublinMetadataRelationType::ConformsTo => "conforms_to".to_string(),
+        DublinMetadataRelationType::Requires => "requires".to_string(),
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct DBRelationsRepo {
@@ -92,8 +103,18 @@ impl RelationsRepo for DBRelationsRepo {
 
                 RelationResponse {
                     id: new_relation.id,
-                    relation_type: serde_json::to_string(&new_relation.relation_type)
-                        .unwrap_or_default(),
+                    relation_type: match new_relation.relation_type {
+                        DublinMetadataRelationType::HasPart => "has_part".to_string(),
+                        DublinMetadataRelationType::IsPartOf => "is_part_of".to_string(),
+                        DublinMetadataRelationType::HasVersion => "has_version".to_string(),
+                        DublinMetadataRelationType::IsVersionOf => "is_version_of".to_string(),
+                        DublinMetadataRelationType::References => "references".to_string(),
+                        DublinMetadataRelationType::IsReferencedBy => {
+                            "is_referenced_by".to_string()
+                        }
+                        DublinMetadataRelationType::ConformsTo => "conforms_to".to_string(),
+                        DublinMetadataRelationType::Requires => "requires".to_string(),
+                    },
                     related_accession_id: new_relation.related_accession_id,
                 }
             }
@@ -113,8 +134,18 @@ impl RelationsRepo for DBRelationsRepo {
 
                 RelationResponse {
                     id: new_relation.id,
-                    relation_type: serde_json::to_string(&new_relation.relation_type)
-                        .unwrap_or_default(),
+                    relation_type: match new_relation.relation_type {
+                        DublinMetadataRelationType::HasPart => "has_part".to_string(),
+                        DublinMetadataRelationType::IsPartOf => "is_part_of".to_string(),
+                        DublinMetadataRelationType::HasVersion => "has_version".to_string(),
+                        DublinMetadataRelationType::IsVersionOf => "is_version_of".to_string(),
+                        DublinMetadataRelationType::References => "references".to_string(),
+                        DublinMetadataRelationType::IsReferencedBy => {
+                            "is_referenced_by".to_string()
+                        }
+                        DublinMetadataRelationType::ConformsTo => "conforms_to".to_string(),
+                        DublinMetadataRelationType::Requires => "requires".to_string(),
+                    },
                     related_accession_id: new_relation.related_accession_id,
                 }
             }
@@ -143,7 +174,7 @@ impl RelationsRepo for DBRelationsRepo {
                     .into_iter()
                     .map(|r| RelationResponse {
                         id: r.id,
-                        relation_type: serde_json::to_string(&r.relation_type).unwrap_or_default(),
+                        relation_type: relation_type_to_string(r.relation_type),
                         related_accession_id: r.related_accession_id,
                     })
                     .collect())
@@ -161,7 +192,7 @@ impl RelationsRepo for DBRelationsRepo {
                     .into_iter()
                     .map(|r| RelationResponse {
                         id: r.id,
-                        relation_type: serde_json::to_string(&r.relation_type).unwrap_or_default(),
+                        relation_type: relation_type_to_string(r.relation_type),
                         related_accession_id: r.related_accession_id,
                     })
                     .collect())
@@ -181,7 +212,7 @@ impl RelationsRepo for DBRelationsRepo {
                     .await?;
                 relation.map(|r| RelationResponse {
                     id: r.id,
-                    relation_type: serde_json::to_string(&r.relation_type).unwrap_or_default(),
+                    relation_type: relation_type_to_string(r.relation_type),
                     related_accession_id: r.related_accession_id,
                 })
             }
@@ -191,7 +222,7 @@ impl RelationsRepo for DBRelationsRepo {
                     .await?;
                 relation.map(|r| RelationResponse {
                     id: r.id,
-                    relation_type: serde_json::to_string(&r.relation_type).unwrap_or_default(),
+                    relation_type: relation_type_to_string(r.relation_type),
                     related_accession_id: r.related_accession_id,
                 })
             }
