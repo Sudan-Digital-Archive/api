@@ -90,30 +90,48 @@ pub fn apply_location_text_filter(
     expr.and(Expr::expr(location_col.into_expr()).ilike(location_ilike))
 }
 
-/// Apply location ID filter using equality check.
+/// Apply location ID filter using OR chain (equivalent to IN clause).
 ///
 /// Filters records where the location ID matches ANY of the provided IDs.
 pub fn apply_location_ids_filter(expr: SimpleExpr, ids: Vec<i32>, column: Expr) -> SimpleExpr {
-    let ids_str = ids
-        .iter()
-        .map(|i| i.to_string())
-        .collect::<Vec<_>>()
-        .join(",");
-    let cond = Expr::cust(format!("ANY(ARRAY[{}])", ids_str));
-    expr.and(column.eq(cond))
+    if ids.is_empty() {
+        return expr;
+    }
+
+    let in_clause = ids.iter().fold(None, |acc, id| {
+        let cond = column.clone().eq(*id);
+        match acc {
+            None => Some(cond),
+            Some(a) => Some(a.or(cond)),
+        }
+    });
+
+    match in_clause {
+        Some(cond) => expr.and(cond),
+        None => expr,
+    }
 }
 
-/// Apply creators filter using equality check.
+/// Apply creators filter using OR chain (equivalent to IN clause).
 ///
 /// Filters records where the creator ID matches ANY of the provided IDs.
 pub fn apply_creators_filter(expr: SimpleExpr, ids: Vec<i32>, column: Expr) -> SimpleExpr {
-    let ids_str = ids
-        .iter()
-        .map(|i| i.to_string())
-        .collect::<Vec<_>>()
-        .join(",");
-    let cond = Expr::cust(format!("ANY(ARRAY[{}])", ids_str));
-    expr.and(column.eq(cond))
+    if ids.is_empty() {
+        return expr;
+    }
+
+    let in_clause = ids.iter().fold(None, |acc, id| {
+        let cond = column.clone().eq(*id);
+        match acc {
+            None => Some(cond),
+            Some(a) => Some(a.or(cond)),
+        }
+    });
+
+    match in_clause {
+        Some(cond) => expr.and(cond),
+        None => expr,
+    }
 }
 
 /// Apply contributors filter using PostgreSQL array operators.
