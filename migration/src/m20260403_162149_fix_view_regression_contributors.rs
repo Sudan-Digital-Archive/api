@@ -6,7 +6,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-         manager
+        manager
             .get_connection()
             .execute_unprepared(
                 r#"
@@ -179,7 +179,7 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-         manager
+        manager
             .get_connection()
             .execute_unprepared(
                 r#"
@@ -357,5 +357,5 @@ impl MigrationTrait for Migration {
             .await?;
 
         Ok(())
-}
+    }
 }
