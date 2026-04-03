@@ -380,9 +380,7 @@ impl AccessionsRepo for DBAccessionsRepo {
         } else {
             Some(MetadataIds {
                 ids: params.metadata_subjects,
-                inclusive_filter: params
-                    .metadata_subjects_inclusive_filter
-                    .unwrap_or(true),
+                inclusive_filter: params.metadata_subjects_inclusive_filter.unwrap_or(true),
             })
         };
         let filter_params = FilterParams {

@@ -225,7 +225,9 @@ async fn list_accessions(
         metadata_contributors: pagination.0.metadata_contributors,
         metadata_contributors_inclusive_filter: pagination.0.metadata_contributors_inclusive_filter,
         metadata_contributor_roles: pagination.0.metadata_contributor_roles,
-        metadata_contributor_roles_inclusive_filter: pagination.0.metadata_contributor_roles_inclusive_filter,
+        metadata_contributor_roles_inclusive_filter: pagination
+            .0
+            .metadata_contributor_roles_inclusive_filter,
         query_term: pagination.0.query_term,
         url_filter: pagination.0.url_filter,
         date_from: pagination.0.date_from,
