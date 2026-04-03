@@ -6,7 +6,7 @@ pub mod contributor_roles_repo;
 pub mod contributors_repo;
 pub mod creators_repo;
 pub mod emails_repo;
-mod filter_builder;
+pub mod filter_builder;
 pub mod locations_repo;
 pub mod relations_repo;
 pub mod s3_repo;

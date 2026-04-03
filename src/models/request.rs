@@ -119,6 +119,16 @@ pub struct AccessionPagination {
     #[schema(example = json!([1, 2, 3]))]
     pub metadata_subjects: Vec<i32>,
     pub metadata_subjects_inclusive_filter: Option<bool>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_locations: Vec<i32>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_creators: Vec<i32>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributors: Vec<i32>,
+    pub metadata_contributors_inclusive_filter: Option<bool>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_roles: Vec<i32>,
+    pub metadata_contributor_roles_inclusive_filter: Option<bool>,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
     #[validate(length(min = 1, max = 2000))]
@@ -136,6 +146,12 @@ impl Default for AccessionPagination {
             lang: MetadataLanguage::English,
             metadata_subjects: [].to_vec(),
             metadata_subjects_inclusive_filter: None,
+            metadata_locations: [].to_vec(),
+            metadata_creators: [].to_vec(),
+            metadata_contributors: [].to_vec(),
+            metadata_contributors_inclusive_filter: None,
+            metadata_contributor_roles: [].to_vec(),
+            metadata_contributor_roles_inclusive_filter: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -158,6 +174,16 @@ pub struct AccessionPaginationWithPrivate {
     #[schema(example = json!([1, 2, 3]))]
     pub metadata_subjects: Vec<i32>,
     pub metadata_subjects_inclusive_filter: Option<bool>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_locations: Vec<i32>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_creators: Vec<i32>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributors: Vec<i32>,
+    pub metadata_contributors_inclusive_filter: Option<bool>,
+    #[schema(example = json!([1, 2, 3]))]
+    pub metadata_contributor_roles: Vec<i32>,
+    pub metadata_contributor_roles_inclusive_filter: Option<bool>,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
     #[validate(length(min = 1, max = 2000))]
@@ -176,6 +202,12 @@ impl Default for AccessionPaginationWithPrivate {
             lang: MetadataLanguage::English,
             metadata_subjects: [].to_vec(),
             metadata_subjects_inclusive_filter: None,
+            metadata_locations: [].to_vec(),
+            metadata_creators: [].to_vec(),
+            metadata_contributors: [].to_vec(),
+            metadata_contributors_inclusive_filter: None,
+            metadata_contributor_roles: [].to_vec(),
+            metadata_contributor_roles_inclusive_filter: None,
             query_term: None,
             url_filter: None,
             date_from: None,

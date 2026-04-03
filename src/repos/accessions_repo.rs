@@ -8,7 +8,7 @@ use crate::models::request::{
     AccessionPaginationWithPrivate, CreateAccessionRequest, CreateAccessionRequestRaw,
     UpdateAccessionRequest,
 };
-use crate::repos::filter_builder::{build_filter_expression, FilterParams, MetadataSubjects};
+use crate::repos::filter_builder::{build_filter_expression, FilterParams, MetadataIds};
 use async_trait::async_trait;
 use chrono::Utc;
 use entity::accession::ActiveModel as AccessionActiveModel;
@@ -279,6 +279,8 @@ impl DBAccessionsRepo {
             is_private: ActiveValue::Set(accession_data.is_private),
             dublin_metadata_format: ActiveValue::Set(accession_data.metadata_format),
             s3_filename: ActiveValue::Set(accession_data.s3_filename),
+            full_text_en: ActiveValue::Set(None),
+            full_text_ar: ActiveValue::Set(None),
         };
         let saved_accession = accession.clone().save(&txn).await?;
         txn.commit().await?;
@@ -376,16 +378,44 @@ impl AccessionsRepo for DBAccessionsRepo {
         let metadata_subjects = if params.metadata_subjects.is_empty() {
             None
         } else {
-            Some(MetadataSubjects {
-                metadata_subjects: params.metadata_subjects,
-                metadata_subjects_inclusive_filter: params
-                    .metadata_subjects_inclusive_filter
-                    .unwrap_or(true),
+            Some(MetadataIds {
+                ids: params.metadata_subjects,
+                inclusive_filter: params.metadata_subjects_inclusive_filter.unwrap_or(true),
             })
         };
         let filter_params = FilterParams {
             metadata_language: params.lang,
             metadata_subjects,
+            metadata_locations: if params.metadata_locations.is_empty() {
+                None
+            } else {
+                Some(params.metadata_locations)
+            },
+            metadata_creators: if params.metadata_creators.is_empty() {
+                None
+            } else {
+                Some(params.metadata_creators)
+            },
+            metadata_contributors: if params.metadata_contributors.is_empty() {
+                None
+            } else {
+                Some(MetadataIds {
+                    ids: params.metadata_contributors,
+                    inclusive_filter: params
+                        .metadata_contributors_inclusive_filter
+                        .unwrap_or(true),
+                })
+            },
+            metadata_contributor_roles: if params.metadata_contributor_roles.is_empty() {
+                None
+            } else {
+                Some(MetadataIds {
+                    ids: params.metadata_contributor_roles,
+                    inclusive_filter: params
+                        .metadata_contributor_roles_inclusive_filter
+                        .unwrap_or(true),
+                })
+            },
             query_term: params.query_term,
             url_filter: params.url_filter,
             date_from: params.date_from,

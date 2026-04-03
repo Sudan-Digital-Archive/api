@@ -17,7 +17,11 @@ use sea_query::extension::postgres::PgBinOper;
 #[derive(Debug, Clone, Default)]
 pub struct FilterParams {
     pub metadata_language: MetadataLanguage,
-    pub metadata_subjects: Option<MetadataSubjects>,
+    pub metadata_subjects: Option<MetadataIds>,
+    pub metadata_locations: Option<Vec<i32>>,
+    pub metadata_creators: Option<Vec<i32>>,
+    pub metadata_contributors: Option<MetadataIds>,
+    pub metadata_contributor_roles: Option<MetadataIds>,
     pub query_term: Option<String>,
     pub url_filter: Option<String>,
     pub date_from: Option<NaiveDateTime>,
@@ -26,12 +30,12 @@ pub struct FilterParams {
     pub location: Option<String>,
 }
 
-/// Defines the structure for metadata subjects filtering.
-/// Easier to build match cases later of this struct than the raw format they come in.
+/// Defines the structure for metadata ID-based filtering (subjects, contributors, roles).
+/// Uses array operators for inclusive/exclusive filtering.
 #[derive(Debug, Clone)]
-pub struct MetadataSubjects {
-    pub metadata_subjects: Vec<i32>,
-    pub metadata_subjects_inclusive_filter: bool,
+pub struct MetadataIds {
+    pub ids: Vec<i32>,
+    pub inclusive_filter: bool,
 }
 
 /// Adds subject-based filtering to a query expression using PostgreSQL array operators.
@@ -56,15 +60,11 @@ pub struct MetadataSubjects {
 /// # Returns
 ///
 /// A new `SimpleExpr` that includes the subject filtering logic.
-fn add_array_operators_to_subjects(
-    expr: SimpleExpr,
-    subjects_column: Expr,
-    metadata_subjects: MetadataSubjects,
-) -> SimpleExpr {
-    if metadata_subjects.metadata_subjects_inclusive_filter {
-        expr.and(subjects_column.binary(PgBinOper::Overlap, metadata_subjects.metadata_subjects))
+fn add_array_operators(expr: SimpleExpr, column: Expr, metadata_ids: MetadataIds) -> SimpleExpr {
+    if metadata_ids.inclusive_filter {
+        expr.and(column.binary(PgBinOper::Overlap, metadata_ids.ids))
     } else {
-        expr.and(subjects_column.binary(PgBinOper::Contains, metadata_subjects.metadata_subjects))
+        expr.and(column.binary(PgBinOper::Contains, metadata_ids.ids))
     }
 }
 /// Builds a dynamic filter expression for searching metadata across the archive.
@@ -82,14 +82,29 @@ fn add_array_operators_to_subjects(
 /// It supports full-text search, date range filtering, and subject-based filtering.
 /// Note that sea orm has no ts vector datatype, so we have to get a bit funky for full text search
 pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
-    let (lang_filter, subjects_column) = match params.metadata_language {
+    let (
+        lang_filter,
+        subjects_column,
+        locations_column,
+        creators_column,
+        contributors_column,
+        contributor_roles_column,
+    ) = match params.metadata_language {
         MetadataLanguage::English => (
             Expr::col(accessions_with_metadata::Column::HasEnglishMetadata),
             Expr::col(accessions_with_metadata::Column::SubjectsEnIds),
+            Expr::col(accessions_with_metadata::Column::LocationEnId),
+            Expr::col(accessions_with_metadata::Column::CreatorEnId),
+            Expr::col(accessions_with_metadata::Column::ContributorEnIds),
+            Expr::col(accessions_with_metadata::Column::ContributorRoleEnIds),
         ),
         MetadataLanguage::Arabic => (
             Expr::col(accessions_with_metadata::Column::HasArabicMetadata),
             Expr::col(accessions_with_metadata::Column::SubjectsArIds),
+            Expr::col(accessions_with_metadata::Column::LocationArId),
+            Expr::col(accessions_with_metadata::Column::CreatorArId),
+            Expr::col(accessions_with_metadata::Column::ContributorArIds),
+            Expr::col(accessions_with_metadata::Column::ContributorRoleArIds),
         ),
     };
     let (full_text_col_name, ts_lang) = match params.metadata_language {
@@ -113,8 +128,7 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 .and(accessions_with_metadata::Column::DublinMetadataDate.lte(to))
                 .and(lang_filter.eq(true))
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
             Some(expression)
         }
         (Some(term), Some(from), None, Some(metadata_subjects)) => {
@@ -126,8 +140,7 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 .and(accessions_with_metadata::Column::DublinMetadataDate.gte(from))
                 .and(lang_filter.eq(true))
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
 
             Some(expression)
         }
@@ -140,8 +153,7 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 .and(accessions_with_metadata::Column::DublinMetadataDate.lte(to))
                 .and(lang_filter.eq(true))
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
             Some(expression)
         }
         (Some(term), None, None, Some(metadata_subjects)) => {
@@ -152,8 +164,7 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 )
                 .and(lang_filter.eq(true))
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
             Some(expression)
         }
         (None, Some(from), Some(to), Some(metadata_subjects)) => {
@@ -162,8 +173,7 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 .and(accessions_with_metadata::Column::DublinMetadataDate.lte(to))
                 .and(lang_filter.eq(true))
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
             Some(expression)
         }
         (None, Some(from), None, Some(metadata_subjects)) => {
@@ -171,8 +181,7 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 .gte(from)
                 .and(lang_filter.eq(true))
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
             Some(expression)
         }
         (None, None, Some(to), Some(metadata_subjects)) => {
@@ -180,16 +189,14 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 .lte(to)
                 .and(lang_filter.eq(true))
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
             Some(expression)
         }
         (None, None, None, Some(metadata_subjects)) => {
             let mut expression = lang_filter
                 .eq(true)
                 .and(accessions_with_metadata::Column::IsPrivate.eq(params.is_private));
-            expression =
-                add_array_operators_to_subjects(expression, subjects_column, metadata_subjects);
+            expression = add_array_operators(expression, subjects_column, metadata_subjects);
             Some(expression)
         }
         (Some(term), Some(from), Some(to), None) => Some(
@@ -274,6 +281,23 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
             expression.map(|e| e.and(Expr::expr(location_col.into_expr()).ilike(location_ilike)));
     }
 
+    if let Some(location_ids) = params.metadata_locations {
+        expression = expression.map(|e| e.and(locations_column.eq(location_ids)));
+    }
+
+    if let Some(creator_ids) = params.metadata_creators {
+        expression = expression.map(|e| e.and(creators_column.eq(creator_ids)));
+    }
+
+    if let Some(contributors) = params.metadata_contributors {
+        expression = expression.map(|e| add_array_operators(e, contributors_column, contributors));
+    }
+
+    if let Some(contributor_roles) = params.metadata_contributor_roles {
+        expression =
+            expression.map(|e| add_array_operators(e, contributor_roles_column, contributor_roles));
+    }
+
     expression
 }
 
@@ -287,6 +311,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: Some("https://example.com".to_string()),
             date_from: None,
@@ -309,6 +337,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -326,6 +358,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::Arabic,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -347,6 +383,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: Some("Test".to_string()),
             url_filter: None,
             date_from: None,
@@ -378,6 +418,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::Arabic,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: Some("اختبار".to_string()),
             url_filter: None,
             date_from: None,
@@ -414,6 +458,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: Some(from_date),
@@ -443,6 +491,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: Some(from_date),
@@ -471,6 +523,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -503,6 +559,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: Some("test".to_string()),
             url_filter: None,
             date_from: Some(from_date),
@@ -533,6 +593,10 @@ mod tests {
         let params_lower = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: Some("test".to_string()),
             url_filter: None,
             date_from: None,
@@ -544,6 +608,10 @@ mod tests {
         let params_upper = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: Some("TEST".to_string()),
             url_filter: None,
             date_from: None,
@@ -584,10 +652,14 @@ mod tests {
         let subjects = vec![1, 2, 3];
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
-            metadata_subjects: Some(MetadataSubjects {
-                metadata_subjects: subjects.clone(),
-                metadata_subjects_inclusive_filter: true,
+            metadata_subjects: Some(MetadataIds {
+                ids: subjects.clone(),
+                inclusive_filter: true,
             }),
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -613,10 +685,14 @@ mod tests {
         let subjects = vec![1, 2, 3];
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
-            metadata_subjects: Some(MetadataSubjects {
-                metadata_subjects: subjects.clone(),
-                metadata_subjects_inclusive_filter: false,
+            metadata_subjects: Some(MetadataIds {
+                ids: subjects.clone(),
+                inclusive_filter: false,
             }),
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -642,10 +718,14 @@ mod tests {
         let subjects = vec![1, 2, 3];
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
-            metadata_subjects: Some(MetadataSubjects {
-                metadata_subjects: subjects.clone(),
-                metadata_subjects_inclusive_filter: true,
+            metadata_subjects: Some(MetadataIds {
+                ids: subjects.clone(),
+                inclusive_filter: true,
             }),
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: Some("test".to_string()),
             url_filter: None,
             date_from: None,
@@ -676,6 +756,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -701,6 +785,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::Arabic,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -726,6 +814,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: Some("test".to_string()),
             url_filter: None,
             date_from: None,
@@ -765,6 +857,10 @@ mod tests {
         let params = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: Some(from_date),
@@ -793,10 +889,14 @@ mod tests {
         let subjects = vec![1, 2, 3];
         let params = FilterParams {
             metadata_language: MetadataLanguage::Arabic,
-            metadata_subjects: Some(MetadataSubjects {
-                metadata_subjects: subjects.clone(),
-                metadata_subjects_inclusive_filter: true,
+            metadata_subjects: Some(MetadataIds {
+                ids: subjects.clone(),
+                inclusive_filter: true,
             }),
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -826,6 +926,10 @@ mod tests {
         let params_lower = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -838,6 +942,10 @@ mod tests {
         let params_upper = FilterParams {
             metadata_language: MetadataLanguage::English,
             metadata_subjects: None,
+            metadata_locations: None,
+            metadata_creators: None,
+            metadata_contributors: None,
+            metadata_contributor_roles: None,
             query_term: None,
             url_filter: None,
             date_from: None,
