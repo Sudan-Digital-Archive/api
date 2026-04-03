@@ -94,14 +94,26 @@ pub fn apply_location_text_filter(
 ///
 /// Filters records where the location ID matches ANY of the provided IDs.
 pub fn apply_location_ids_filter(expr: SimpleExpr, ids: Vec<i32>, column: Expr) -> SimpleExpr {
-    expr.and(column.eq(ids))
+    let ids_str = ids
+        .iter()
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let cond = Expr::cust(format!("ANY(ARRAY[{}])", ids_str));
+    expr.and(column.eq(cond))
 }
 
 /// Apply creators filter using equality check.
 ///
 /// Filters records where the creator ID matches ANY of the provided IDs.
 pub fn apply_creators_filter(expr: SimpleExpr, ids: Vec<i32>, column: Expr) -> SimpleExpr {
-    expr.and(column.eq(ids))
+    let ids_str = ids
+        .iter()
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let cond = Expr::cust(format!("ANY(ARRAY[{}])", ids_str));
+    expr.and(column.eq(cond))
 }
 
 /// Apply contributors filter using PostgreSQL array operators.

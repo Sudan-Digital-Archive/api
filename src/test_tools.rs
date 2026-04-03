@@ -1086,8 +1086,6 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         relations_ar: Some(
             json!([{"id": 2, "relation_type": "is_part_of", "related_accession_id": 3}]),
         ),
-        full_text_en: Some("test".to_string()),
-        full_text_ar: Some("اختبار".to_string()),
     }
 }
 
