@@ -414,8 +414,9 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Response indicating success or failure of the update
-    pub async fn update_one(self, id: i32, payload: UpdateAccessionRequest, private: bool) -> Response {
+    pub async fn update_one(self, id: i32, payload: UpdateAccessionRequest) -> Response {
         info!("Updating accession with id {id}");
+        let is_private = payload.is_private;
         let update_result = self.accessions_repo.update_one(id, payload).await;
         match update_result {
             Err(err) => {
@@ -423,7 +424,7 @@ impl AccessionsService {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
             }
             Ok(Some(_)) => {
-                self.get_one(id, private).await
+                self.get_one(id, is_private).await
             }
             Ok(None) => {
                 (StatusCode::NOT_FOUND, "Accession not found").into_response()
