@@ -279,8 +279,8 @@ impl DBAccessionsRepo {
             is_private: ActiveValue::Set(accession_data.is_private),
             dublin_metadata_format: ActiveValue::Set(accession_data.metadata_format),
             s3_filename: ActiveValue::Set(accession_data.s3_filename),
-            full_text_en: ActiveValue::Set(None),
-            full_text_ar: ActiveValue::Set(None),
+            full_text_en: ActiveValue::not_set(),
+            full_text_ar: ActiveValue::not_set(),
         };
         let saved_accession = accession.clone().save(&txn).await?;
         txn.commit().await?;
@@ -537,6 +537,8 @@ impl AccessionsRepo for DBAccessionsRepo {
         match accession {
             Some(accession) => {
                 let mut accession_active: AccessionActiveModel = accession.clone().into();
+                accession_active.full_text_en = ActiveValue::not_set();
+                accession_active.full_text_ar = ActiveValue::not_set();
 
                 let location_en_id = update_accession_request.metadata_location_en_id;
 
