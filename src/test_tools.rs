@@ -1104,8 +1104,6 @@ pub fn mock_one_accession() -> AccessionModel {
         is_private: true,
         dublin_metadata_format: DublinMetadataFormat::Wacz,
         s3_filename: Some("some_file.wacz".to_string()),
-        full_text_en: Some("test".to_string()),
-        full_text_ar: Some("اختبار".to_string()),
     }
 }
 

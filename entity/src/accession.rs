@@ -19,10 +19,6 @@ pub struct Model {
     pub job_run_id: Option<String>,
     pub seed_url: String,
     pub is_private: bool,
-    #[sea_orm(column_type = "custom(\"tsvector\")", nullable)]
-    pub full_text_en: Option<String>,
-    #[sea_orm(column_type = "custom(\"tsvector\")", nullable)]
-    pub full_text_ar: Option<String>,
     pub dublin_metadata_format: DublinMetadataFormat,
     pub s3_filename: Option<String>,
 }
