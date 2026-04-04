@@ -423,12 +423,8 @@ impl AccessionsService {
                 error!(%err, "Error occurred updating accession");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
             }
-            Ok(Some(_)) => {
-                self.get_one(id, is_private).await
-            }
-            Ok(None) => {
-                (StatusCode::NOT_FOUND, "Accession not found").into_response()
-            }
+            Ok(Some(_)) => self.get_one(id, is_private).await,
+            Ok(None) => (StatusCode::NOT_FOUND, "Accession not found").into_response(),
         }
     }
 
