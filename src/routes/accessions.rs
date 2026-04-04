@@ -340,6 +340,7 @@ async fn update_accession(
     {
         return response;
     }
+
     state.accessions_service.update_one(id, payload).await
 }
 

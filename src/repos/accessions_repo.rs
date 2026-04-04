@@ -114,7 +114,7 @@ pub trait AccessionsRepo: Send + Sync {
         &self,
         id: i32,
         update_accession_request: UpdateAccessionRequest,
-    ) -> Result<Option<AccessionWithMetadataModel>, DbErr>;
+    ) -> Result<Option<i32>, DbErr>;
 
     async fn get_dublin_metadata_id(
         &self,
@@ -531,7 +531,7 @@ impl AccessionsRepo for DBAccessionsRepo {
         &self,
         id: i32,
         update_accession_request: UpdateAccessionRequest,
-    ) -> Result<Option<AccessionWithMetadataModel>, DbErr> {
+    ) -> Result<Option<i32>, DbErr> {
         let txn = self.db_session.begin().await?;
         let accession = Accession::find_by_id(id).one(&self.db_session).await?;
         match accession {
@@ -681,10 +681,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                 accession_active.is_private = ActiveValue::Set(update_accession_request.is_private);
                 accession_active.update(&txn).await?;
                 txn.commit().await?;
-                let accession = AccessionWithMetadata::find_by_id(id)
-                    .one(&self.db_session)
-                    .await?;
-                Ok(accession)
+                Ok(Some(id))
             }
             None => Ok(None),
         }
