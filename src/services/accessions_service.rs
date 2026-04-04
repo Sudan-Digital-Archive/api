@@ -414,7 +414,7 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Response indicating success or failure of the update
-    pub async fn update_one(self, id: i32, payload: UpdateAccessionRequest) -> Response {
+    pub async fn update_one(self, id: i32, payload: UpdateAccessionRequest, private: bool) -> Response {
         info!("Updating accession with id {id}");
         let update_result = self.accessions_repo.update_one(id, payload).await;
         match update_result {
@@ -422,13 +422,11 @@ impl AccessionsService {
                 error!(%err, "Error occurred updating accession");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
             }
-            Ok(update_result) => {
-                if let Some(accession) = update_result {
-                    self.enrich_accession_with_wacz_url(accession).await
-                } else {
-                    error!("Error occurred finding accession in view after update");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-                }
+            Ok(Some(_)) => {
+                self.get_one(id, private).await
+            }
+            Ok(None) => {
+                (StatusCode::NOT_FOUND, "Accession not found").into_response()
             }
         }
     }

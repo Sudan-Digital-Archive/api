@@ -102,8 +102,8 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
         &self,
         _id: i32,
         _update_accession_request: crate::models::request::UpdateAccessionRequest,
-    ) -> Result<Option<AccessionsWithMetadataModel>, DbErr> {
-        Ok(Some(mock_one_accession_with_metadata()))
+    ) -> Result<Option<i32>, DbErr> {
+        Ok(Some(_id))
     }
 
     async fn get_dublin_metadata_id(
