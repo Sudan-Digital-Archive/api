@@ -11,9 +11,15 @@ use entity::dublin_metadata_subject_en::Model as DublinMetadataSubjectEnModel;
 use entity::sea_orm_active_enums::DublinMetadataFormat;
 use entity::sea_orm_active_enums::{CrawlStatus, Role};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub struct AccessionRelation {
+    pub id: i32,
+    pub relation_type: String,
+    pub related_accession_id: i32,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct AccessionsWithMetadataResponse {
@@ -39,7 +45,7 @@ pub struct AccessionsWithMetadataResponse {
     pub contributor_en_ids: Option<Vec<i32>>,
     pub contributor_roles_en: Option<Vec<String>>,
     pub contributor_role_en_ids: Option<Vec<i32>>,
-    pub relations_en: Option<Value>,
+    pub relations_en: Option<Vec<AccessionRelation>>,
     pub title_ar: Option<String>,
     pub description_ar: Option<String>,
     pub location_ar: Option<String>,
@@ -52,7 +58,7 @@ pub struct AccessionsWithMetadataResponse {
     pub contributor_ar_ids: Option<Vec<i32>>,
     pub contributor_roles_ar: Option<Vec<String>>,
     pub contributor_role_ar_ids: Option<Vec<i32>>,
-    pub relations_ar: Option<Value>,
+    pub relations_ar: Option<Vec<AccessionRelation>>,
     pub has_english_metadata: bool,
     pub has_arabic_metadata: bool,
 }
@@ -82,7 +88,10 @@ impl From<AccessionsWithMetadataModel> for AccessionsWithMetadataResponse {
             contributor_en_ids: model.contributor_en_ids,
             contributor_roles_en: model.contributor_roles_en,
             contributor_role_en_ids: model.contributor_role_en_ids,
-            relations_en: model.relations_en,
+            relations_en: model
+                .relations_en
+                .map(|v| serde_json::from_value(v).ok())
+                .flatten(),
             title_ar: model.title_ar,
             description_ar: model.description_ar,
             location_ar: model.location_ar,
@@ -95,7 +104,10 @@ impl From<AccessionsWithMetadataModel> for AccessionsWithMetadataResponse {
             contributor_ar_ids: model.contributor_ar_ids,
             contributor_roles_ar: model.contributor_roles_ar,
             contributor_role_ar_ids: model.contributor_role_ar_ids,
-            relations_ar: model.relations_ar,
+            relations_ar: model
+                .relations_ar
+                .map(|v| serde_json::from_value(v).ok())
+                .flatten(),
             has_english_metadata: model.has_english_metadata,
             has_arabic_metadata: model.has_arabic_metadata,
         }
