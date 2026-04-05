@@ -31,22 +31,14 @@ pub struct CreateAccessionRequest {
     pub s3_filename: Option<String>,
     #[serde(default = "bool::default")]
     pub send_email_notification: bool,
-    pub metadata_location_en_id: Option<i32>,
-    pub metadata_location_ar_id: Option<i32>,
-    pub metadata_creator_en_id: Option<i32>,
-    pub metadata_creator_ar_id: Option<i32>,
+    pub metadata_location_id: Option<i32>,
+    pub metadata_creator_id: Option<i32>,
     #[serde(default)]
     #[schema(example = json!([1, 2, 3]))]
-    pub metadata_contributor_en_ids: Vec<i32>,
+    pub metadata_contributor_ids: Vec<i32>,
     #[serde(default)]
     #[schema(example = json!([null, 1, null]))]
-    pub metadata_contributor_role_en_ids: Vec<Option<i32>>,
-    #[serde(default)]
-    #[schema(example = json!([1, 2, 3]))]
-    pub metadata_contributor_ar_ids: Vec<i32>,
-    #[serde(default)]
-    #[schema(example = json!([null, 1, null]))]
-    pub metadata_contributor_role_ar_ids: Vec<Option<i32>>,
+    pub metadata_contributor_role_ids: Vec<Option<i32>>,
 }
 
 /// Request for creating a new accession from raw file + metadata.
@@ -66,22 +58,14 @@ pub struct CreateAccessionRequestRaw {
     #[validate(url)]
     pub original_url: String,
     pub s3_filename: String,
-    pub metadata_location_en_id: Option<i32>,
-    pub metadata_location_ar_id: Option<i32>,
-    pub metadata_creator_en_id: Option<i32>,
-    pub metadata_creator_ar_id: Option<i32>,
+    pub metadata_location_id: Option<i32>,
+    pub metadata_creator_id: Option<i32>,
     #[serde(default)]
     #[schema(example = json!([1, 2, 3]))]
-    pub metadata_contributor_en_ids: Vec<i32>,
+    pub metadata_contributor_ids: Vec<i32>,
     #[serde(default)]
     #[schema(example = json!([null, 1, null]))]
-    pub metadata_contributor_role_en_ids: Vec<Option<i32>>,
-    #[serde(default)]
-    #[schema(example = json!([1, 2, 3]))]
-    pub metadata_contributor_ar_ids: Vec<i32>,
-    #[serde(default)]
-    #[schema(example = json!([null, 1, null]))]
-    pub metadata_contributor_role_ar_ids: Vec<Option<i32>>,
+    pub metadata_contributor_role_ids: Vec<Option<i32>>,
 }
 
 /// Request for creating a new accession from raw file + metadata via multipart upload.
@@ -277,25 +261,16 @@ pub struct UpdateAccessionRequest {
     pub metadata_description: Option<String>,
     pub metadata_time: NaiveDateTime,
     #[validate(length(min = 1, max = 200))]
-    #[schema(example = json!([1, 2, 3]))]
     pub metadata_subjects: Vec<i32>,
     pub is_private: bool,
-    pub metadata_location_en_id: Option<i32>,
-    pub metadata_location_ar_id: Option<i32>,
-    pub metadata_creator_en_id: Option<i32>,
-    pub metadata_creator_ar_id: Option<i32>,
+    pub metadata_location_id: Option<i32>,
+    pub metadata_creator_id: Option<i32>,
     #[serde(default)]
     #[schema(example = json!([1, 2, 3]))]
-    pub metadata_contributor_en_ids: Vec<i32>,
+    pub metadata_contributor_ids: Vec<i32>,
     #[serde(default)]
     #[schema(example = json!([null, 1, null]))]
-    pub metadata_contributor_role_en_ids: Vec<Option<i32>>,
-    #[serde(default)]
-    #[schema(example = json!([1, 2, 3]))]
-    pub metadata_contributor_ar_ids: Vec<i32>,
-    #[serde(default)]
-    #[schema(example = json!([null, 1, null]))]
-    pub metadata_contributor_role_ar_ids: Vec<Option<i32>>,
+    pub metadata_contributor_role_ids: Vec<Option<i32>>,
 }
 
 /// Request for updating a subject category.
