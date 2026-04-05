@@ -1075,11 +1075,11 @@ pub fn mock_one_accession_with_metadata() -> AccessionsWithMetadataModel {
         contributors_en: Some(vec!["Paul McCartney".to_string()]),
         contributor_en_ids: Some(vec![1]),
         contributor_roles_en: Some(vec!["singer".to_string()]),
-        contributor_role_en_ids: Some(vec![1]),
+        contributor_role_en_ids: vec![1],
         contributors_ar: Some(vec!["بول ماك كارتني".to_string()]),
         contributor_ar_ids: Some(vec![2]),
         contributor_roles_ar: Some(vec!["مغني".to_string()]),
-        contributor_role_ar_ids: Some(vec![2]),
+        contributor_role_ar_ids: vec![2],
         relations_en: Some(
             json!([{"id": 1, "relation_type": "has_part", "related_accession_id": 2}]),
         ),

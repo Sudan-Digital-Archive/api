@@ -406,6 +406,12 @@ impl AccessionsService {
         }
     }
 
+    fn find_duplicate_contributor(ids: &[i32]) -> Option<i32> {
+        use std::collections::HashSet;
+        let mut seen = HashSet::new();
+        ids.iter().find(|&&id| !seen.insert(id)).copied()
+    }
+
     /// Updates a single accession by ID.
     ///
     /// # Arguments
@@ -416,6 +422,31 @@ impl AccessionsService {
     /// Response indicating success or failure of the update
     pub async fn update_one(self, id: i32, payload: UpdateAccessionRequest) -> Response {
         info!("Updating accession with id {id}");
+
+        let lang = payload.metadata_language;
+        let (contributor_ids, _role_ids) = match lang {
+            MetadataLanguage::English => (
+                &payload.metadata_contributor_en_ids,
+                &payload.metadata_contributor_role_en_ids,
+            ),
+            MetadataLanguage::Arabic => (
+                &payload.metadata_contributor_ar_ids,
+                &payload.metadata_contributor_role_ar_ids,
+            ),
+        };
+
+        if let Some(duplicate_id) = Self::find_duplicate_contributor(contributor_ids) {
+            warn!(%duplicate_id, "Duplicate contributor ID in update request");
+            return (
+                StatusCode::BAD_REQUEST,
+                format!(
+                    "Contributor ID {} is specified multiple times. Each contributor can only have multiple roles, not be duplicated.",
+                    duplicate_id
+                ),
+            )
+                .into_response();
+        }
+
         let is_private = payload.is_private;
         let update_result = self.accessions_repo.update_one(id, payload).await;
         match update_result {
