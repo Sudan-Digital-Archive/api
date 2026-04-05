@@ -22,6 +22,7 @@ mod m20260304_195900_add_contributor_tables;
 mod m20260312_120000_add_dublin_metadata_relations;
 mod m20260313_000000_add_filter_ids_to_view;
 mod m20260403_162149_fix_view_regression_contributors;
+mod m20260405_151806_refactor_nullish_contributors;
 
 pub struct Migrator;
 
@@ -52,6 +53,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260312_120000_add_dublin_metadata_relations::Migration),
             Box::new(m20260313_000000_add_filter_ids_to_view::Migration),
             Box::new(m20260403_162149_fix_view_regression_contributors::Migration),
+            Box::new(m20260405_151806_refactor_nullish_contributors::Migration),
         ]
     }
 }
