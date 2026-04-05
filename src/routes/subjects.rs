@@ -21,10 +21,10 @@ use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use validator::Validate;
 
-/// Creates routes for subject-related endpoints under `/metadata-subjects`.
+/// Creates routes for subject-related endpoints under `/subjects`.
 pub fn get_subjects_routes() -> Router<AppState> {
     Router::new().nest(
-        "/metadata-subjects",
+        "/subjects",
         Router::new()
             .route("/", get(list_subjects))
             .route("/", post(create_subject))
@@ -36,7 +36,7 @@ pub fn get_subjects_routes() -> Router<AppState> {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/metadata-subjects",
+    path = "/api/v1/subjects",
     tag = "Subjects",
     request_body = CreateSubjectRequest,
     responses(
@@ -65,7 +65,7 @@ async fn create_subject(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/metadata-subjects",
+    path = "/api/v1/subjects",
     tag = "Subjects",
     params(
         SubjectPagination
@@ -97,7 +97,7 @@ async fn list_subjects(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/metadata-subjects/{subject_id}",
+    path = "/api/v1/subjects/{subject_id}",
     tag = "Subjects",
     params(
         ("subject_id" = i32, Path, description = "Subject ID"),
@@ -118,7 +118,7 @@ async fn get_one_subject(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/metadata-subjects/{subject_id}",
+    path = "/api/v1/subjects/{subject_id}",
     tag = "Subjects",
     request_body = DeleteSubjectRequest,
     responses(
@@ -149,7 +149,7 @@ async fn delete_subject(
 
 #[utoipa::path(
     put,
-    path = "/api/v1/metadata-subjects/{subject_id}",
+    path = "/api/v1/subjects/{subject_id}",
     tag = "Subjects",
     request_body = UpdateSubjectRequest,
     responses(
@@ -202,7 +202,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
-                    .uri("/api/v1/metadata-subjects")
+                    .uri("/api/v1/subjects")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .body(Body::from(
                         serde_json::to_vec(&json!({
@@ -225,7 +225,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
-                    .uri("/api/v1/metadata-subjects")
+                    .uri("/api/v1/subjects")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
                     .body(Body::from(
@@ -253,7 +253,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
-                    .uri("/api/v1/metadata-subjects")
+                    .uri("/api/v1/subjects")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
                     .body(Body::from(
@@ -280,7 +280,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/metadata-subjects?page=0&per_page=1&lang=english")
+                    .uri("/api/v1/subjects?page=0&per_page=1&lang=english")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -301,7 +301,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/metadata-subjects?page=0&per_page=1&lang=arabic")
+                    .uri("/api/v1/subjects?page=0&per_page=1&lang=arabic")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -322,7 +322,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/metadata-subjects")
+                    .uri("/api/v1/subjects")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -344,7 +344,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(http::Method::DELETE)
-                    .uri("/api/v1/metadata-subjects/1")
+                    .uri("/api/v1/subjects/1")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .body(Body::from(
                         serde_json::to_vec(&json!({
@@ -367,7 +367,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(http::Method::DELETE)
-                    .uri("/api/v1/metadata-subjects/1")
+                    .uri("/api/v1/subjects/1")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
                     .body(Body::from(
@@ -391,7 +391,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(http::Method::PUT)
-                    .uri("/api/v1/metadata-subjects/1")
+                    .uri("/api/v1/subjects/1")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .body(Body::from(
                         serde_json::to_vec(&json!({
@@ -415,7 +415,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(http::Method::PUT)
-                    .uri("/api/v1/metadata-subjects/1")
+                    .uri("/api/v1/subjects/1")
                     .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
                     .body(Body::from(
