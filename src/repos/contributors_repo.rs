@@ -20,6 +20,7 @@ use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
     IntoActiveModel, PaginatorTrait, QueryFilter,
 };
+use std::collections::HashSet;
 
 /// Repository implementation for database operations on contributors.
 #[derive(Debug, Clone, Default)]
@@ -195,6 +196,7 @@ impl ContributorsRepo for DBContributorsRepo {
         contributor_ids: Vec<i32>,
         metadata_language: MetadataLanguage,
     ) -> Result<bool, DbErr> {
+        let input_set: HashSet<i32> = contributor_ids.iter().cloned().collect();
         let flag = match metadata_language {
             MetadataLanguage::English => {
                 let rows = DublinMetadataContributorEn::find()
@@ -203,7 +205,8 @@ impl ContributorsRepo for DBContributorsRepo {
                     )
                     .all(&self.db_session)
                     .await?;
-                rows.len() == contributor_ids.len()
+                let found_set: HashSet<i32> = rows.iter().map(|r| r.id).collect();
+                input_set == found_set
             }
             MetadataLanguage::Arabic => {
                 let rows = DublinMetadataContributorAr::find()
@@ -212,7 +215,8 @@ impl ContributorsRepo for DBContributorsRepo {
                     )
                     .all(&self.db_session)
                     .await?;
-                rows.len() == contributor_ids.len()
+                let found_set: HashSet<i32> = rows.iter().map(|r| r.id).collect();
+                input_set == found_set
             }
         };
         Ok(flag)

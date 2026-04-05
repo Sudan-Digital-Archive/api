@@ -20,6 +20,7 @@ use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
     IntoActiveModel, PaginatorTrait, QueryFilter,
 };
+use std::collections::HashSet;
 
 /// Repository implementation for database operations on contributor roles.
 #[derive(Debug, Clone, Default)]
@@ -193,20 +194,23 @@ impl ContributorRolesRepo for DBContributorRolesRepo {
         role_ids: Vec<i32>,
         metadata_language: MetadataLanguage,
     ) -> Result<bool, DbErr> {
+        let input_set: HashSet<i32> = role_ids.iter().cloned().collect();
         let flag = match metadata_language {
             MetadataLanguage::English => {
                 let rows = DublinMetadataContributorRoleEn::find()
                     .filter(dublin_metadata_contributor_role_en::Column::Id.is_in(role_ids.clone()))
                     .all(&self.db_session)
                     .await?;
-                rows.len() == role_ids.len()
+                let found_set: HashSet<i32> = rows.iter().map(|r| r.id).collect();
+                input_set == found_set
             }
             MetadataLanguage::Arabic => {
                 let rows = DublinMetadataContributorRoleAr::find()
                     .filter(dublin_metadata_contributor_role_ar::Column::Id.is_in(role_ids.clone()))
                     .all(&self.db_session)
                     .await?;
-                rows.len() == role_ids.len()
+                let found_set: HashSet<i32> = rows.iter().map(|r| r.id).collect();
+                input_set == found_set
             }
         };
         Ok(flag)
