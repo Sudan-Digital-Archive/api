@@ -20,7 +20,8 @@ use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use async_trait::async_trait;
 use entity::{
     collection_ar_subjects, collection_en_subjects, dublin_metadata_ar_subjects,
-    dublin_metadata_contributor_role_ar, dublin_metadata_contributor_role_en, dublin_metadata_en_subjects,
+    dublin_metadata_contributor_role_ar, dublin_metadata_contributor_role_en,
+    dublin_metadata_en_subjects,
 };
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{ExprTrait, Func};
