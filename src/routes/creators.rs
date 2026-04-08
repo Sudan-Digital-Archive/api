@@ -86,6 +86,7 @@ async fn list_creators(
             pagination.0.per_page,
             pagination.0.lang,
             pagination.0.query_term,
+            pagination.0.in_collection_id,
         )
         .await
 }

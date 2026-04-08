@@ -346,6 +346,7 @@ impl LocationsRepo for InMemoryLocationsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_location_ar::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_location_ar::Model {
@@ -361,6 +362,7 @@ impl LocationsRepo for InMemoryLocationsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_location_en::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_location_en::Model {
@@ -431,6 +433,7 @@ impl CreatorsRepo for InMemoryCreatorsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_creator_ar::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_creator_ar::Model {
@@ -446,6 +449,7 @@ impl CreatorsRepo for InMemoryCreatorsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_creator_en::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_creator_en::Model {
@@ -515,6 +519,7 @@ impl ContributorsRepo for InMemoryContributorsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_contributor_ar::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_contributor_ar::Model {
@@ -530,6 +535,7 @@ impl ContributorsRepo for InMemoryContributorsRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_contributor_en::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_contributor_en::Model {
@@ -599,6 +605,7 @@ impl ContributorRolesRepo for InMemoryContributorRolesRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_contributor_role_ar::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_contributor_role_ar::Model {
@@ -614,6 +621,7 @@ impl ContributorRolesRepo for InMemoryContributorRolesRepo {
         _page: u64,
         _per_page: u64,
         _query_term: Option<String>,
+        _collection_id: Option<i32>,
     ) -> Result<(Vec<entity::dublin_metadata_contributor_role_en::Model>, u64), DbErr> {
         Ok((
             vec![entity::dublin_metadata_contributor_role_en::Model {

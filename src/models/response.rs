@@ -90,8 +90,7 @@ impl From<AccessionsWithMetadataModel> for AccessionsWithMetadataResponse {
             contributor_role_en_ids: model.contributor_role_en_ids,
             relations_en: model
                 .relations_en
-                .map(|v| serde_json::from_value(v).ok())
-                .flatten(),
+                .and_then(|v| serde_json::from_value(v).ok()),
             title_ar: model.title_ar,
             description_ar: model.description_ar,
             location_ar: model.location_ar,
@@ -106,8 +105,7 @@ impl From<AccessionsWithMetadataModel> for AccessionsWithMetadataResponse {
             contributor_role_ar_ids: model.contributor_role_ar_ids,
             relations_ar: model
                 .relations_ar
-                .map(|v| serde_json::from_value(v).ok())
-                .flatten(),
+                .and_then(|v| serde_json::from_value(v).ok()),
             has_english_metadata: model.has_english_metadata,
             has_arabic_metadata: model.has_arabic_metadata,
         }

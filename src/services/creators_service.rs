@@ -70,13 +70,14 @@ impl CreatorsService {
         per_page: u64,
         metadata_language: MetadataLanguage,
         query_term: Option<String>,
+        in_collection_id: Option<i32>,
     ) -> Response {
         info!("Getting page {page} of {metadata_language} creators with per page {per_page}...");
         match metadata_language {
             MetadataLanguage::Arabic => {
                 match self
                     .creators_repo
-                    .list_paginated_ar(page, per_page, query_term)
+                    .list_paginated_ar(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {
@@ -105,7 +106,7 @@ impl CreatorsService {
             MetadataLanguage::English => {
                 match self
                     .creators_repo
-                    .list_paginated_en(page, per_page, query_term)
+                    .list_paginated_en(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {

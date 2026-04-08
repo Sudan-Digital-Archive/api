@@ -6,14 +6,22 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateContributorRoleRequest, UpdateContributorRoleRequest};
 use crate::models::response::ContributorRoleResponse;
+use ::entity::collection_ar_subjects::Entity as CollectionArSubjects;
+use ::entity::collection_en_subjects::Entity as CollectionEnSubjects;
+use ::entity::dublin_metadata_ar_subjects::Entity as DublinMetadataArSubjects;
 use ::entity::dublin_metadata_contributor_role_ar::ActiveModel as DublinMetadataContributorRoleArActiveModel;
 use ::entity::dublin_metadata_contributor_role_ar::Entity as DublinMetadataContributorRoleAr;
 use ::entity::dublin_metadata_contributor_role_ar::Model as DublinMetadataContributorRoleArModel;
 use ::entity::dublin_metadata_contributor_role_en::ActiveModel as DublinMetadataContributorRoleEnActiveModel;
 use ::entity::dublin_metadata_contributor_role_en::Entity as DublinMetadataContributorRoleEn;
 use ::entity::dublin_metadata_contributor_role_en::Model as DublinMetadataContributorRoleEnModel;
+use ::entity::dublin_metadata_en_contributors::Entity as DublinMetadataEnContributors;
+use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use async_trait::async_trait;
-use entity::{dublin_metadata_contributor_role_ar, dublin_metadata_contributor_role_en};
+use entity::{
+    collection_ar_subjects, collection_en_subjects, dublin_metadata_ar_subjects,
+    dublin_metadata_contributor_role_ar, dublin_metadata_contributor_role_en, dublin_metadata_en_subjects,
+};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{ExprTrait, Func};
 use sea_orm::{
@@ -29,44 +37,30 @@ pub struct DBContributorRolesRepo {
 }
 
 /// Defines the interface for contributor role-related database operations.
-///
-/// This trait provides methods for creating and retrieving contributor role terms
-/// that can be used to describe roles of contributors to archived content in both Arabic and English.
 #[async_trait]
 pub trait ContributorRolesRepo: Send + Sync {
     /// Creates a new contributor role term in the specified language.
-    ///
-    /// # Arguments
-    /// * `create_role_request` - The request containing role details and language
     async fn write_one(
         &self,
         create_role_request: CreateContributorRoleRequest,
     ) -> Result<ContributorRoleResponse, DbErr>;
 
     /// Lists Arabic contributor role terms with pagination and optional text search.
-    ///
-    /// # Arguments
-    /// * `page` - The page number to retrieve
-    /// * `per_page` - Number of records per page
-    /// * `query_term` - Optional text search term
     async fn list_paginated_ar(
         &self,
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorRoleArModel>, u64), DbErr>;
 
     /// Lists English contributor role terms with pagination and optional text search.
-    ///
-    /// # Arguments
-    /// * `page` - The page number to retrieve
-    /// * `per_page` - Number of records per page
-    /// * `query_term` - Optional text search term
     async fn list_paginated_en(
         &self,
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorRoleEnModel>, u64), DbErr>;
 
     /// Verifies that all provided contributor role IDs exist in the database.
@@ -152,14 +146,69 @@ impl ContributorRolesRepo for DBContributorRolesRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorRoleArModel>, u64), DbErr> {
         let mut query = DublinMetadataContributorRoleAr::find();
 
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let subject_ids: Vec<i32> = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.subject_ar_id)
+                .collect();
+
+            if subject_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids: Vec<i32> = DublinMetadataArSubjects::find()
+                .filter(dublin_metadata_ar_subjects::Column::SubjectId.is_in(subject_ids))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.metadata_id)
+                .collect();
+
+            if metadata_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            let role_ids: Vec<i32> = entity::dublin_metadata_en_contributors::Entity::find()
+                .filter(
+                    entity::dublin_metadata_en_contributors::Column::MetadataId.is_in(metadata_ids),
+                )
+                .filter(entity::dublin_metadata_en_contributors::Column::RoleId.is_not_null())
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .filter_map(|c| c.role_id)
+                .collect();
+
+            if role_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            query = query
+                .filter(entity::dublin_metadata_contributor_role_ar::Column::Id.is_in(role_ids));
+        }
+
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
-            let query_filter =
-                Func::lower(Expr::col(dublin_metadata_contributor_role_ar::Column::Role))
-                    .like(&query_string);
+            let query_filter = Func::lower(Expr::col(
+                entity::dublin_metadata_contributor_role_ar::Column::Role,
+            ))
+            .like(&query_string);
             query = query.filter(query_filter);
         }
 
@@ -173,14 +222,69 @@ impl ContributorRolesRepo for DBContributorRolesRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorRoleEnModel>, u64), DbErr> {
         let mut query = DublinMetadataContributorRoleEn::find();
 
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let subject_ids: Vec<i32> = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.subject_en_id)
+                .collect();
+
+            if subject_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids: Vec<i32> = DublinMetadataEnSubjects::find()
+                .filter(dublin_metadata_en_subjects::Column::SubjectId.is_in(subject_ids))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.metadata_id)
+                .collect();
+
+            if metadata_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            let role_ids: Vec<i32> = DublinMetadataEnContributors::find()
+                .filter(
+                    entity::dublin_metadata_en_contributors::Column::MetadataId.is_in(metadata_ids),
+                )
+                .filter(entity::dublin_metadata_en_contributors::Column::RoleId.is_not_null())
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .filter_map(|c| c.role_id)
+                .collect();
+
+            if role_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            query = query
+                .filter(entity::dublin_metadata_contributor_role_en::Column::Id.is_in(role_ids));
+        }
+
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
-            let query_filter =
-                Func::lower(Expr::col(dublin_metadata_contributor_role_en::Column::Role))
-                    .like(&query_string);
+            let query_filter = Func::lower(Expr::col(
+                entity::dublin_metadata_contributor_role_en::Column::Role,
+            ))
+            .like(&query_string);
             query = query.filter(query_filter);
         }
 

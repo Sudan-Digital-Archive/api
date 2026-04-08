@@ -6,13 +6,21 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateCreatorRequest, UpdateCreatorRequest};
 use crate::models::response::CreatorResponse;
+use ::entity::collection_ar_subjects::Entity as CollectionArSubjects;
+use ::entity::collection_en_subjects::Entity as CollectionEnSubjects;
+use ::entity::dublin_metadata_ar_subjects::Entity as DublinMetadataArSubjects;
 use ::entity::dublin_metadata_creator_ar::ActiveModel as DublinMetadataCreatorArActiveModel;
 use ::entity::dublin_metadata_creator_ar::Entity as DublinMetadataCreatorAr;
 use ::entity::dublin_metadata_creator_ar::Model as DublinMetadataCreatorArModel;
 use ::entity::dublin_metadata_creator_en::ActiveModel as DublinMetadataCreatorEnActiveModel;
 use ::entity::dublin_metadata_creator_en::Entity as DublinMetadataCreatorEn;
 use ::entity::dublin_metadata_creator_en::Model as DublinMetadataCreatorEnModel;
+use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use async_trait::async_trait;
+use entity::{
+    collection_ar_subjects, collection_en_subjects, dublin_metadata_ar_subjects,
+    dublin_metadata_en_subjects,
+};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{ExprTrait, Func};
 use sea_orm::{
@@ -37,6 +45,7 @@ pub trait CreatorsRepo: Send + Sync {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorArModel>, u64), DbErr>;
 
     async fn list_paginated_en(
@@ -44,6 +53,7 @@ pub trait CreatorsRepo: Send + Sync {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorEnModel>, u64), DbErr>;
 
     #[allow(dead_code)]
@@ -110,16 +120,68 @@ impl CreatorsRepo for DBCreatorsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorArModel>, u64), DbErr> {
+        let subject_ids: Vec<i32> = if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let subject_ids: Vec<i32> = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.subject_ar_id)
+                .collect();
+            subject_ids
+        } else {
+            vec![]
+        };
+
         let mut query = DublinMetadataCreatorAr::find();
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                ::entity::dublin_metadata_creator_ar::Column::Creator,
+                entity::dublin_metadata_creator_ar::Column::Creator,
             ))
             .like(&query_string);
             query = query.filter(query_filter);
+        }
+
+        if !subject_ids.is_empty() {
+            let metadata_ids: Vec<i32> = DublinMetadataArSubjects::find()
+                .filter(dublin_metadata_ar_subjects::Column::SubjectId.is_in(subject_ids))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.metadata_id)
+                .collect();
+
+            if metadata_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            let creator_ids: Vec<i32> = ::entity::dublin_metadata_ar::Entity::find()
+                .filter(::entity::dublin_metadata_ar::Column::Id.is_in(metadata_ids))
+                .filter(::entity::dublin_metadata_ar::Column::CreatorArId.is_not_null())
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .filter_map(|m| m.creator_ar_id)
+                .collect();
+
+            if creator_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            query = query.filter(entity::dublin_metadata_creator_ar::Column::Id.is_in(creator_ids));
         }
 
         let creator_pages = query.paginate(&self.db_session, per_page);
@@ -132,16 +194,68 @@ impl CreatorsRepo for DBCreatorsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorEnModel>, u64), DbErr> {
+        let subject_ids: Vec<i32> = if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let subject_ids: Vec<i32> = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.subject_en_id)
+                .collect();
+            subject_ids
+        } else {
+            vec![]
+        };
+
         let mut query = DublinMetadataCreatorEn::find();
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                ::entity::dublin_metadata_creator_en::Column::Creator,
+                entity::dublin_metadata_creator_en::Column::Creator,
             ))
             .like(&query_string);
             query = query.filter(query_filter);
+        }
+
+        if !subject_ids.is_empty() {
+            let metadata_ids: Vec<i32> = DublinMetadataEnSubjects::find()
+                .filter(dublin_metadata_en_subjects::Column::SubjectId.is_in(subject_ids))
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .map(|s| s.metadata_id)
+                .collect();
+
+            if metadata_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            let creator_ids: Vec<i32> = ::entity::dublin_metadata_en::Entity::find()
+                .filter(::entity::dublin_metadata_en::Column::Id.is_in(metadata_ids))
+                .filter(::entity::dublin_metadata_en::Column::CreatorEnId.is_not_null())
+                .all(&self.db_session)
+                .await?
+                .into_iter()
+                .filter_map(|m| m.creator_en_id)
+                .collect();
+
+            if creator_ids.is_empty() {
+                return Ok((Vec::new(), 0));
+            }
+
+            query = query.filter(entity::dublin_metadata_creator_ar::Column::Id.is_in(creator_ids));
         }
 
         let creator_pages = query.paginate(&self.db_session, per_page);

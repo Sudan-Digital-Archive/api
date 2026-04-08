@@ -187,10 +187,8 @@ impl DBAccessionsRepo {
                 if !accession_data.metadata_contributor_ids.is_empty() {
                     let mut contributor_links: Vec<DublinMetadataEnContributorsActiveModel> =
                         vec![];
-                    for (i, contributor_id) in accession_data
-                        .metadata_contributor_ids
-                        .iter()
-                        .enumerate()
+                    for (i, contributor_id) in
+                        accession_data.metadata_contributor_ids.iter().enumerate()
                     {
                         let role_id = accession_data
                             .metadata_contributor_role_ids
@@ -234,10 +232,8 @@ impl DBAccessionsRepo {
                 if !accession_data.metadata_contributor_ids.is_empty() {
                     let mut contributor_links: Vec<DublinMetadataArContributorsActiveModel> =
                         vec![];
-                    for (i, contributor_id) in accession_data
-                        .metadata_contributor_ids
-                        .iter()
-                        .enumerate()
+                    for (i, contributor_id) in
+                        accession_data.metadata_contributor_ids.iter().enumerate()
                     {
                         let role_id = accession_data
                             .metadata_contributor_role_ids
@@ -309,8 +305,7 @@ impl AccessionsRepo for DBAccessionsRepo {
             metadata_location_id: create_accession_request.metadata_location_id,
             metadata_creator_id: create_accession_request.metadata_creator_id,
             metadata_contributor_ids: create_accession_request.metadata_contributor_ids,
-            metadata_contributor_role_ids: create_accession_request
-                .metadata_contributor_role_ids,
+            metadata_contributor_role_ids: create_accession_request.metadata_contributor_role_ids,
         };
         self._create_one(accession_data).await
     }
@@ -336,8 +331,7 @@ impl AccessionsRepo for DBAccessionsRepo {
             metadata_location_id: create_accession_request.metadata_location_id,
             metadata_creator_id: create_accession_request.metadata_creator_id,
             metadata_contributor_ids: create_accession_request.metadata_contributor_ids,
-            metadata_contributor_role_ids: create_accession_request
-                .metadata_contributor_role_ids,
+            metadata_contributor_role_ids: create_accession_request.metadata_contributor_role_ids,
         };
         self._create_one(accession_data).await
     }
@@ -560,10 +554,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                             .filter(<entity::dublin_metadata_en_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
                             .exec(&txn)
                             .await?;
-                        if !update_accession_request
-                            .metadata_contributor_ids
-                            .is_empty()
-                        {
+                        if !update_accession_request.metadata_contributor_ids.is_empty() {
                             let mut new_contributor_links: Vec<
                                 DublinMetadataEnContributorsActiveModel,
                             > = vec![];
@@ -625,10 +616,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                             .filter(<entity::dublin_metadata_ar_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
                             .exec(&txn)
                             .await?;
-                        if !update_accession_request
-                            .metadata_contributor_ids
-                            .is_empty()
-                        {
+                        if !update_accession_request.metadata_contributor_ids.is_empty() {
                             let mut new_contributor_links: Vec<
                                 DublinMetadataArContributorsActiveModel,
                             > = vec![];

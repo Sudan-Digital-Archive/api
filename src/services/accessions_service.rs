@@ -284,7 +284,8 @@ impl AccessionsService {
                                     metadata_location_id: payload.metadata_location_id,
                                     metadata_creator_id: payload.metadata_creator_id,
                                     metadata_contributor_ids: payload.metadata_contributor_ids,
-                                    metadata_contributor_role_ids: payload.metadata_contributor_role_ids,
+                                    metadata_contributor_role_ids: payload
+                                        .metadata_contributor_role_ids,
                                 };
                                 let write_result = self
                                     .accessions_repo
@@ -769,8 +770,7 @@ impl AccessionsService {
         }
 
         if !params.metadata_contributor_ids.is_empty()
-            && params.metadata_contributor_ids.len()
-                != params.metadata_contributor_role_ids.len()
+            && params.metadata_contributor_ids.len() != params.metadata_contributor_role_ids.len()
         {
             return Err((
                 StatusCode::BAD_REQUEST,

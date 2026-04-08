@@ -477,6 +477,8 @@ pub struct LocationPagination {
     pub lang: MetadataLanguage,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
+    #[schema(example = 1)]
+    pub in_collection_id: Option<i32>,
 }
 
 impl Default for LocationPagination {
@@ -486,6 +488,7 @@ impl Default for LocationPagination {
             per_page: 20,
             lang: MetadataLanguage::English,
             query_term: None,
+            in_collection_id: None,
         }
     }
 }
@@ -536,6 +539,8 @@ pub struct CreatorPagination {
     pub lang: MetadataLanguage,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
+    #[schema(example = 1)]
+    pub in_collection_id: Option<i32>,
 }
 
 impl Default for CreatorPagination {
@@ -545,6 +550,7 @@ impl Default for CreatorPagination {
             per_page: 20,
             lang: MetadataLanguage::English,
             query_term: None,
+            in_collection_id: None,
         }
     }
 }
@@ -594,6 +600,8 @@ pub struct ContributorPagination {
     pub lang: MetadataLanguage,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
+    #[schema(example = 1)]
+    pub in_collection_id: Option<i32>,
 }
 
 impl Default for ContributorPagination {
@@ -603,6 +611,7 @@ impl Default for ContributorPagination {
             per_page: 20,
             lang: MetadataLanguage::English,
             query_term: None,
+            in_collection_id: None,
         }
     }
 }
@@ -652,6 +661,8 @@ pub struct ContributorRolePagination {
     pub lang: MetadataLanguage,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
+    #[schema(example = 1)]
+    pub in_collection_id: Option<i32>,
 }
 
 impl Default for ContributorRolePagination {
@@ -661,6 +672,7 @@ impl Default for ContributorRolePagination {
             per_page: 20,
             lang: MetadataLanguage::English,
             query_term: None,
+            in_collection_id: None,
         }
     }
 }
