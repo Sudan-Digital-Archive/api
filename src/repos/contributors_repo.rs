@@ -6,19 +6,26 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateContributorRequest, UpdateContributorRequest};
 use crate::models::response::ContributorResponse;
+use ::entity::collection_ar_subjects::Entity as CollectionArSubjects;
+use ::entity::collection_en_subjects::Entity as CollectionEnSubjects;
+use ::entity::dublin_metadata_ar_subjects::Entity as DublinMetadataArSubjects;
 use ::entity::dublin_metadata_contributor_ar::ActiveModel as DublinMetadataContributorArActiveModel;
 use ::entity::dublin_metadata_contributor_ar::Entity as DublinMetadataContributorAr;
 use ::entity::dublin_metadata_contributor_ar::Model as DublinMetadataContributorArModel;
 use ::entity::dublin_metadata_contributor_en::ActiveModel as DublinMetadataContributorEnActiveModel;
 use ::entity::dublin_metadata_contributor_en::Entity as DublinMetadataContributorEn;
 use ::entity::dublin_metadata_contributor_en::Model as DublinMetadataContributorEnModel;
+use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use async_trait::async_trait;
-use entity::{dublin_metadata_contributor_ar, dublin_metadata_contributor_en};
+use entity::{
+    collection_ar_subjects, collection_en_subjects, dublin_metadata_ar_subjects,
+    dublin_metadata_contributor_ar, dublin_metadata_contributor_en, dublin_metadata_en_subjects,
+};
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{ExprTrait, Func};
+use sea_orm::sea_query::{ExprTrait, Func, SelectStatement};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
-    IntoActiveModel, PaginatorTrait, QueryFilter,
+    IntoActiveModel, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
 use std::collections::HashSet;
 
@@ -35,38 +42,27 @@ pub struct DBContributorsRepo {
 #[async_trait]
 pub trait ContributorsRepo: Send + Sync {
     /// Creates a new contributor term in the specified language.
-    ///
-    /// # Arguments
-    /// * `create_contributor_request` - The request containing contributor details and language
     async fn write_one(
         &self,
         create_contributor_request: CreateContributorRequest,
     ) -> Result<ContributorResponse, DbErr>;
 
     /// Lists Arabic contributor terms with pagination and optional text search.
-    ///
-    /// # Arguments
-    /// * `page` - The page number to retrieve
-    /// * `per_page` - Number of records per page
-    /// * `query_term` - Optional text search term
     async fn list_paginated_ar(
         &self,
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorArModel>, u64), DbErr>;
 
     /// Lists English contributor terms with pagination and optional text search.
-    ///
-    /// # Arguments
-    /// * `page` - The page number to retrieve
-    /// * `per_page` - Number of records per page
-    /// * `query_term` - Optional text search term
     async fn list_paginated_en(
         &self,
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorEnModel>, u64), DbErr>;
 
     /// Verifies that all provided contributor IDs exist in the database.
@@ -152,13 +148,51 @@ impl ContributorsRepo for DBContributorsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorArModel>, u64), DbErr> {
         let mut query = DublinMetadataContributorAr::find();
+
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids_subquery: SelectStatement = DublinMetadataArSubjects::find()
+                .select_only()
+                .column(dublin_metadata_ar_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_ar_subjects::Column::SubjectId.in_subquery(
+                        CollectionArSubjects::find()
+                            .select_only()
+                            .column(collection_ar_subjects::Column::SubjectArId)
+                            .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
+
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_contributor_ar::Relation::DublinMetadataArContributors
+                        .def(),
+                )
+                .filter(
+                    entity::dublin_metadata_ar_contributors::Column::MetadataId
+                        .in_subquery(metadata_ids_subquery),
+                );
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                dublin_metadata_contributor_ar::Column::Contributor,
+                entity::dublin_metadata_contributor_ar::Column::Contributor,
             ))
             .like(&query_string);
             query = query.filter(query_filter);
@@ -174,13 +208,51 @@ impl ContributorsRepo for DBContributorsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataContributorEnModel>, u64), DbErr> {
         let mut query = DublinMetadataContributorEn::find();
+
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids_subquery: SelectStatement = DublinMetadataEnSubjects::find()
+                .select_only()
+                .column(dublin_metadata_en_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_en_subjects::Column::SubjectId.in_subquery(
+                        CollectionEnSubjects::find()
+                            .select_only()
+                            .column(collection_en_subjects::Column::SubjectEnId)
+                            .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
+
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_contributor_en::Relation::DublinMetadataEnContributors
+                        .def(),
+                )
+                .filter(
+                    entity::dublin_metadata_en_contributors::Column::MetadataId
+                        .in_subquery(metadata_ids_subquery),
+                );
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                dublin_metadata_contributor_en::Column::Contributor,
+                entity::dublin_metadata_contributor_en::Column::Contributor,
             ))
             .like(&query_string);
             query = query.filter(query_filter);

@@ -6,18 +6,26 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateCreatorRequest, UpdateCreatorRequest};
 use crate::models::response::CreatorResponse;
+use ::entity::collection_ar_subjects::Entity as CollectionArSubjects;
+use ::entity::collection_en_subjects::Entity as CollectionEnSubjects;
+use ::entity::dublin_metadata_ar_subjects::Entity as DublinMetadataArSubjects;
 use ::entity::dublin_metadata_creator_ar::ActiveModel as DublinMetadataCreatorArActiveModel;
 use ::entity::dublin_metadata_creator_ar::Entity as DublinMetadataCreatorAr;
 use ::entity::dublin_metadata_creator_ar::Model as DublinMetadataCreatorArModel;
 use ::entity::dublin_metadata_creator_en::ActiveModel as DublinMetadataCreatorEnActiveModel;
 use ::entity::dublin_metadata_creator_en::Entity as DublinMetadataCreatorEn;
 use ::entity::dublin_metadata_creator_en::Model as DublinMetadataCreatorEnModel;
+use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use async_trait::async_trait;
+use entity::{
+    collection_ar_subjects, collection_en_subjects, dublin_metadata_ar_subjects,
+    dublin_metadata_en_subjects,
+};
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{ExprTrait, Func};
+use sea_orm::sea_query::{ExprTrait, Func, SelectStatement};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
-    IntoActiveModel, PaginatorTrait, QueryFilter,
+    IntoActiveModel, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -37,6 +45,7 @@ pub trait CreatorsRepo: Send + Sync {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorArModel>, u64), DbErr>;
 
     async fn list_paginated_en(
@@ -44,6 +53,7 @@ pub trait CreatorsRepo: Send + Sync {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorEnModel>, u64), DbErr>;
 
     #[allow(dead_code)]
@@ -110,13 +120,48 @@ impl CreatorsRepo for DBCreatorsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorArModel>, u64), DbErr> {
         let mut query = DublinMetadataCreatorAr::find();
+
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids_subquery: SelectStatement = DublinMetadataArSubjects::find()
+                .select_only()
+                .column(dublin_metadata_ar_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_ar_subjects::Column::SubjectId.in_subquery(
+                        CollectionArSubjects::find()
+                            .select_only()
+                            .column(collection_ar_subjects::Column::SubjectArId)
+                            .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
+
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_creator_ar::Relation::DublinMetadataAr.def(),
+                )
+                .filter(entity::dublin_metadata_ar::Column::Id.in_subquery(metadata_ids_subquery))
+                .filter(entity::dublin_metadata_ar::Column::CreatorArId.is_not_null());
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                ::entity::dublin_metadata_creator_ar::Column::Creator,
+                entity::dublin_metadata_creator_ar::Column::Creator,
             ))
             .like(&query_string);
             query = query.filter(query_filter);
@@ -132,13 +177,48 @@ impl CreatorsRepo for DBCreatorsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataCreatorEnModel>, u64), DbErr> {
         let mut query = DublinMetadataCreatorEn::find();
+
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids_subquery: SelectStatement = DublinMetadataEnSubjects::find()
+                .select_only()
+                .column(dublin_metadata_en_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_en_subjects::Column::SubjectId.in_subquery(
+                        CollectionEnSubjects::find()
+                            .select_only()
+                            .column(collection_en_subjects::Column::SubjectEnId)
+                            .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
+
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_creator_en::Relation::DublinMetadataEn.def(),
+                )
+                .filter(entity::dublin_metadata_en::Column::Id.in_subquery(metadata_ids_subquery))
+                .filter(entity::dublin_metadata_en::Column::CreatorEnId.is_not_null());
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                ::entity::dublin_metadata_creator_en::Column::Creator,
+                entity::dublin_metadata_creator_en::Column::Creator,
             ))
             .like(&query_string);
             query = query.filter(query_filter);

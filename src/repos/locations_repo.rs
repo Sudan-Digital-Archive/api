@@ -6,6 +6,10 @@
 use crate::models::common::MetadataLanguage;
 use crate::models::request::{CreateLocationRequest, UpdateLocationRequest};
 use crate::models::response::LocationResponse;
+use ::entity::collection_ar_subjects::Entity as CollectionArSubjects;
+use ::entity::collection_en_subjects::Entity as CollectionEnSubjects;
+use ::entity::dublin_metadata_ar_subjects::Entity as DublinMetadataArSubjects;
+use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use ::entity::dublin_metadata_location_ar::ActiveModel as DublinMetadataLocationArActiveModel;
 use ::entity::dublin_metadata_location_ar::Entity as DublinMetadataLocationAr;
 use ::entity::dublin_metadata_location_ar::Model as DublinMetadataLocationArModel;
@@ -13,11 +17,15 @@ use ::entity::dublin_metadata_location_en::ActiveModel as DublinMetadataLocation
 use ::entity::dublin_metadata_location_en::Entity as DublinMetadataLocationEn;
 use ::entity::dublin_metadata_location_en::Model as DublinMetadataLocationEnModel;
 use async_trait::async_trait;
+use entity::{
+    collection_ar_subjects, collection_en_subjects, dublin_metadata_ar_subjects,
+    dublin_metadata_en_subjects,
+};
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{ExprTrait, Func};
+use sea_orm::sea_query::{ExprTrait, Func, SelectStatement};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
-    IntoActiveModel, PaginatorTrait, QueryFilter,
+    IntoActiveModel, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
 
 /// Repository implementation for database operations on locations.
@@ -41,6 +49,7 @@ pub trait LocationsRepo: Send + Sync {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataLocationArModel>, u64), DbErr>;
 
     /// Lists English locations with pagination and optional text search.
@@ -49,6 +58,7 @@ pub trait LocationsRepo: Send + Sync {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataLocationEnModel>, u64), DbErr>;
 
     /// Verifies that all provided location IDs exist in the database.
@@ -118,13 +128,48 @@ impl LocationsRepo for DBLocationsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataLocationArModel>, u64), DbErr> {
         let mut query = DublinMetadataLocationAr::find();
+
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionArSubjects::find()
+                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids_subquery: SelectStatement = DublinMetadataArSubjects::find()
+                .select_only()
+                .column(dublin_metadata_ar_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_ar_subjects::Column::SubjectId.in_subquery(
+                        CollectionArSubjects::find()
+                            .select_only()
+                            .column(collection_ar_subjects::Column::SubjectArId)
+                            .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
+
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_location_ar::Relation::DublinMetadataAr.def(),
+                )
+                .filter(entity::dublin_metadata_ar::Column::Id.in_subquery(metadata_ids_subquery))
+                .filter(entity::dublin_metadata_ar::Column::LocationArId.is_not_null());
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                ::entity::dublin_metadata_location_ar::Column::Location,
+                entity::dublin_metadata_location_ar::Column::Location,
             ))
             .like(&query_string);
             query = query.filter(query_filter);
@@ -140,13 +185,48 @@ impl LocationsRepo for DBLocationsRepo {
         page: u64,
         per_page: u64,
         query_term: Option<String>,
+        collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataLocationEnModel>, u64), DbErr> {
         let mut query = DublinMetadataLocationEn::find();
+
+        if let Some(coll_id) = collection_id {
+            let collection_has_subjects = CollectionEnSubjects::find()
+                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                .count(&self.db_session)
+                .await?;
+
+            if collection_has_subjects == 0 {
+                return Ok((Vec::new(), 0));
+            }
+
+            let metadata_ids_subquery: SelectStatement = DublinMetadataEnSubjects::find()
+                .select_only()
+                .column(dublin_metadata_en_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_en_subjects::Column::SubjectId.in_subquery(
+                        CollectionEnSubjects::find()
+                            .select_only()
+                            .column(collection_en_subjects::Column::SubjectEnId)
+                            .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
+
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_location_en::Relation::DublinMetadataEn.def(),
+                )
+                .filter(entity::dublin_metadata_en::Column::Id.in_subquery(metadata_ids_subquery))
+                .filter(entity::dublin_metadata_en::Column::LocationEnId.is_not_null());
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
             let query_filter = Func::lower(Expr::col(
-                ::entity::dublin_metadata_location_en::Column::Location,
+                entity::dublin_metadata_location_en::Column::Location,
             ))
             .like(&query_string);
             query = query.filter(query_filter);

@@ -76,6 +76,7 @@ impl ContributorsService {
         per_page: u64,
         metadata_language: MetadataLanguage,
         query_term: Option<String>,
+        in_collection_id: Option<i32>,
     ) -> Response {
         info!(
             "Getting page {page} of {metadata_language} contributors with per page {per_page}..."
@@ -84,7 +85,7 @@ impl ContributorsService {
             MetadataLanguage::Arabic => {
                 match self
                     .contributors_repo
-                    .list_paginated_ar(page, per_page, query_term)
+                    .list_paginated_ar(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {
@@ -113,7 +114,7 @@ impl ContributorsService {
             MetadataLanguage::English => {
                 match self
                     .contributors_repo
-                    .list_paginated_en(page, per_page, query_term)
+                    .list_paginated_en(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {
@@ -287,13 +288,14 @@ impl ContributorsService {
         per_page: u64,
         metadata_language: MetadataLanguage,
         query_term: Option<String>,
+        in_collection_id: Option<i32>,
     ) -> Response {
         info!("Getting page {page} of {metadata_language} contributor roles with per page {per_page}...");
         match metadata_language {
             MetadataLanguage::Arabic => {
                 match self
                     .contributor_roles_repo
-                    .list_paginated_ar(page, per_page, query_term)
+                    .list_paginated_ar(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {
@@ -322,7 +324,7 @@ impl ContributorsService {
             MetadataLanguage::English => {
                 match self
                     .contributor_roles_repo
-                    .list_paginated_en(page, per_page, query_term)
+                    .list_paginated_en(page, per_page, query_term, in_collection_id)
                     .await
                 {
                     Ok(rows) => {

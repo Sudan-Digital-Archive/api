@@ -49,14 +49,10 @@ enum MultiPartExtractionStep {
 pub(crate) struct MetadataValidationParams {
     pub(crate) subjects: Vec<i32>,
     pub(crate) metadata_language: MetadataLanguage,
-    pub(crate) metadata_location_en_id: Option<i32>,
-    pub(crate) metadata_location_ar_id: Option<i32>,
-    pub(crate) metadata_creator_en_id: Option<i32>,
-    pub(crate) metadata_creator_ar_id: Option<i32>,
-    pub(crate) metadata_contributor_en_ids: Vec<i32>,
-    pub(crate) metadata_contributor_role_en_ids: Vec<Option<i32>>,
-    pub(crate) metadata_contributor_ar_ids: Vec<i32>,
-    pub(crate) metadata_contributor_role_ar_ids: Vec<Option<i32>>,
+    pub(crate) metadata_location_id: Option<i32>,
+    pub(crate) metadata_creator_id: Option<i32>,
+    pub(crate) metadata_contributor_ids: Vec<i32>,
+    pub(crate) metadata_contributor_role_ids: Vec<Option<i32>>,
 }
 
 /// Service for managing archival accessions and their associated web crawls.
@@ -285,18 +281,11 @@ impl AccessionsService {
                                     metadata_format: DublinMetadataFormat::Wacz,
                                     s3_filename: Some(unique_filename.clone()),
                                     send_email_notification: payload.send_email_notification,
-                                    metadata_location_en_id: payload.metadata_location_en_id,
-                                    metadata_location_ar_id: payload.metadata_location_ar_id,
-                                    metadata_creator_en_id: payload.metadata_creator_en_id,
-                                    metadata_creator_ar_id: payload.metadata_creator_ar_id,
-                                    metadata_contributor_en_ids: payload
-                                        .metadata_contributor_en_ids,
-                                    metadata_contributor_role_en_ids: payload
-                                        .metadata_contributor_role_en_ids,
-                                    metadata_contributor_ar_ids: payload
-                                        .metadata_contributor_ar_ids,
-                                    metadata_contributor_role_ar_ids: payload
-                                        .metadata_contributor_role_ar_ids,
+                                    metadata_location_id: payload.metadata_location_id,
+                                    metadata_creator_id: payload.metadata_creator_id,
+                                    metadata_contributor_ids: payload.metadata_contributor_ids,
+                                    metadata_contributor_role_ids: payload
+                                        .metadata_contributor_role_ids,
                                 };
                                 let write_result = self
                                     .accessions_repo
@@ -423,17 +412,7 @@ impl AccessionsService {
     pub async fn update_one(self, id: i32, payload: UpdateAccessionRequest) -> Response {
         info!("Updating accession with id {id}");
 
-        let lang = payload.metadata_language;
-        let (contributor_ids, _role_ids) = match lang {
-            MetadataLanguage::English => (
-                &payload.metadata_contributor_en_ids,
-                &payload.metadata_contributor_role_en_ids,
-            ),
-            MetadataLanguage::Arabic => (
-                &payload.metadata_contributor_ar_ids,
-                &payload.metadata_contributor_role_ar_ids,
-            ),
-        };
+        let contributor_ids = &payload.metadata_contributor_ids;
 
         if let Some(duplicate_id) = Self::find_duplicate_contributor(contributor_ids) {
             warn!(%duplicate_id, "Duplicate contributor ID in update request");
@@ -739,11 +718,8 @@ impl AccessionsService {
         }
 
         let mut location_ids: Vec<i32> = vec![];
-        if let Some(en_id) = params.metadata_location_en_id {
-            location_ids.push(en_id);
-        }
-        if let Some(ar_id) = params.metadata_location_ar_id {
-            location_ids.push(ar_id);
+        if let Some(id) = params.metadata_location_id {
+            location_ids.push(id);
         }
         if !location_ids.is_empty() {
             let locations_exist = self
@@ -768,11 +744,8 @@ impl AccessionsService {
         }
 
         let mut creator_ids: Vec<i32> = vec![];
-        if let Some(en_id) = params.metadata_creator_en_id {
-            creator_ids.push(en_id);
-        }
-        if let Some(ar_id) = params.metadata_creator_ar_id {
-            creator_ids.push(ar_id);
+        if let Some(id) = params.metadata_creator_id {
+            creator_ids.push(id);
         }
         if !creator_ids.is_empty() {
             let creators_exist = self
@@ -796,19 +769,8 @@ impl AccessionsService {
             }
         }
 
-        if !params.metadata_contributor_en_ids.is_empty()
-            && params.metadata_contributor_en_ids.len()
-                != params.metadata_contributor_role_en_ids.len()
-        {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "Contributor IDs and role IDs must have the same length",
-            )
-                .into_response());
-        }
-        if !params.metadata_contributor_ar_ids.is_empty()
-            && params.metadata_contributor_ar_ids.len()
-                != params.metadata_contributor_role_ar_ids.len()
+        if !params.metadata_contributor_ids.is_empty()
+            && params.metadata_contributor_ids.len() != params.metadata_contributor_role_ids.len()
         {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -817,17 +779,13 @@ impl AccessionsService {
                 .into_response());
         }
 
-        let mut contributor_ids: Vec<i32> = vec![];
-        contributor_ids.extend(params.metadata_contributor_en_ids.clone());
-        contributor_ids.extend(params.metadata_contributor_ar_ids.clone());
-
-        let mut role_ids: Vec<i32> = vec![];
-        for role_id in params.metadata_contributor_role_en_ids.iter().flatten() {
-            role_ids.push(*role_id);
-        }
-        for role_id in params.metadata_contributor_role_ar_ids.iter().flatten() {
-            role_ids.push(*role_id);
-        }
+        let contributor_ids: Vec<i32> = params.metadata_contributor_ids.clone();
+        let role_ids: Vec<i32> = params
+            .metadata_contributor_role_ids
+            .iter()
+            .flatten()
+            .copied()
+            .collect();
 
         if !contributor_ids.is_empty() {
             let contributors_exist = self
@@ -945,18 +903,10 @@ impl AccessionsService {
                     .validate_metadata_references(MetadataValidationParams {
                         subjects: parsed.metadata_subjects.clone(),
                         metadata_language: parsed.metadata_language,
-                        metadata_location_en_id: parsed.metadata_location_en_id,
-                        metadata_location_ar_id: parsed.metadata_location_ar_id,
-                        metadata_creator_en_id: parsed.metadata_creator_en_id,
-                        metadata_creator_ar_id: parsed.metadata_creator_ar_id,
-                        metadata_contributor_en_ids: parsed.metadata_contributor_en_ids.clone(),
-                        metadata_contributor_role_en_ids: parsed
-                            .metadata_contributor_role_en_ids
-                            .clone(),
-                        metadata_contributor_ar_ids: parsed.metadata_contributor_ar_ids.clone(),
-                        metadata_contributor_role_ar_ids: parsed
-                            .metadata_contributor_role_ar_ids
-                            .clone(),
+                        metadata_location_id: parsed.metadata_location_id,
+                        metadata_creator_id: parsed.metadata_creator_id,
+                        metadata_contributor_ids: parsed.metadata_contributor_ids.clone(),
+                        metadata_contributor_role_ids: parsed.metadata_contributor_role_ids.clone(),
                     })
                     .await?;
 

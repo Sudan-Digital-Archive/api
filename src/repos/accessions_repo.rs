@@ -146,14 +146,10 @@ struct CreateAccessionData {
     is_private: bool,
     metadata_format: DublinMetadataFormat,
     s3_filename: Option<String>,
-    metadata_location_en_id: Option<i32>,
-    metadata_location_ar_id: Option<i32>,
-    metadata_creator_en_id: Option<i32>,
-    metadata_creator_ar_id: Option<i32>,
-    metadata_contributor_en_ids: Vec<i32>,
-    metadata_contributor_role_en_ids: Vec<Option<i32>>,
-    metadata_contributor_ar_ids: Vec<i32>,
-    metadata_contributor_role_ar_ids: Vec<Option<i32>>,
+    metadata_location_id: Option<i32>,
+    metadata_creator_id: Option<i32>,
+    metadata_contributor_ids: Vec<i32>,
+    metadata_contributor_role_ids: Vec<Option<i32>>,
 }
 
 impl DBAccessionsRepo {
@@ -172,8 +168,8 @@ impl DBAccessionsRepo {
                     id: Default::default(),
                     title: ActiveValue::Set(accession_data.metadata_title),
                     description: ActiveValue::Set(accession_data.metadata_description),
-                    location_en_id: ActiveValue::Set(accession_data.metadata_location_en_id),
-                    creator_en_id: ActiveValue::Set(accession_data.metadata_creator_en_id),
+                    location_en_id: ActiveValue::Set(accession_data.metadata_location_id),
+                    creator_en_id: ActiveValue::Set(accession_data.metadata_creator_id),
                 };
                 let inserted_metadata = metadata.save(&txn).await?;
                 let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -188,16 +184,14 @@ impl DBAccessionsRepo {
                 DublinMetadataSubjectsEn::insert_many(subject_links)
                     .exec(&txn)
                     .await?;
-                if !accession_data.metadata_contributor_en_ids.is_empty() {
+                if !accession_data.metadata_contributor_ids.is_empty() {
                     let mut contributor_links: Vec<DublinMetadataEnContributorsActiveModel> =
                         vec![];
-                    for (i, contributor_id) in accession_data
-                        .metadata_contributor_en_ids
-                        .iter()
-                        .enumerate()
+                    for (i, contributor_id) in
+                        accession_data.metadata_contributor_ids.iter().enumerate()
                     {
                         let role_id = accession_data
-                            .metadata_contributor_role_en_ids
+                            .metadata_contributor_role_ids
                             .get(i)
                             .copied()
                             .flatten();
@@ -219,8 +213,8 @@ impl DBAccessionsRepo {
                     id: Default::default(),
                     title: ActiveValue::Set(accession_data.metadata_title),
                     description: ActiveValue::Set(accession_data.metadata_description),
-                    location_ar_id: ActiveValue::Set(accession_data.metadata_location_ar_id),
-                    creator_ar_id: ActiveValue::Set(accession_data.metadata_creator_ar_id),
+                    location_ar_id: ActiveValue::Set(accession_data.metadata_location_id),
+                    creator_ar_id: ActiveValue::Set(accession_data.metadata_creator_id),
                 };
                 let inserted_metadata = metadata.save(&txn).await?;
                 let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -235,16 +229,14 @@ impl DBAccessionsRepo {
                 DublinMetadataSubjectsAr::insert_many(subject_links)
                     .exec(&txn)
                     .await?;
-                if !accession_data.metadata_contributor_ar_ids.is_empty() {
+                if !accession_data.metadata_contributor_ids.is_empty() {
                     let mut contributor_links: Vec<DublinMetadataArContributorsActiveModel> =
                         vec![];
-                    for (i, contributor_id) in accession_data
-                        .metadata_contributor_ar_ids
-                        .iter()
-                        .enumerate()
+                    for (i, contributor_id) in
+                        accession_data.metadata_contributor_ids.iter().enumerate()
                     {
                         let role_id = accession_data
-                            .metadata_contributor_role_ar_ids
+                            .metadata_contributor_role_ids
                             .get(i)
                             .copied()
                             .flatten();
@@ -310,16 +302,10 @@ impl AccessionsRepo for DBAccessionsRepo {
             is_private: create_accession_request.is_private,
             metadata_format: create_accession_request.metadata_format,
             s3_filename: create_accession_request.s3_filename,
-            metadata_location_en_id: create_accession_request.metadata_location_en_id,
-            metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
-            metadata_creator_en_id: create_accession_request.metadata_creator_en_id,
-            metadata_creator_ar_id: create_accession_request.metadata_creator_ar_id,
-            metadata_contributor_en_ids: create_accession_request.metadata_contributor_en_ids,
-            metadata_contributor_role_en_ids: create_accession_request
-                .metadata_contributor_role_en_ids,
-            metadata_contributor_ar_ids: create_accession_request.metadata_contributor_ar_ids,
-            metadata_contributor_role_ar_ids: create_accession_request
-                .metadata_contributor_role_ar_ids,
+            metadata_location_id: create_accession_request.metadata_location_id,
+            metadata_creator_id: create_accession_request.metadata_creator_id,
+            metadata_contributor_ids: create_accession_request.metadata_contributor_ids,
+            metadata_contributor_role_ids: create_accession_request.metadata_contributor_role_ids,
         };
         self._create_one(accession_data).await
     }
@@ -342,16 +328,10 @@ impl AccessionsRepo for DBAccessionsRepo {
             is_private: create_accession_request.is_private,
             metadata_format: create_accession_request.metadata_format,
             s3_filename: Some(create_accession_request.s3_filename),
-            metadata_location_en_id: create_accession_request.metadata_location_en_id,
-            metadata_location_ar_id: create_accession_request.metadata_location_ar_id,
-            metadata_creator_en_id: create_accession_request.metadata_creator_en_id,
-            metadata_creator_ar_id: create_accession_request.metadata_creator_ar_id,
-            metadata_contributor_en_ids: create_accession_request.metadata_contributor_en_ids,
-            metadata_contributor_role_en_ids: create_accession_request
-                .metadata_contributor_role_en_ids,
-            metadata_contributor_ar_ids: create_accession_request.metadata_contributor_ar_ids,
-            metadata_contributor_role_ar_ids: create_accession_request
-                .metadata_contributor_role_ar_ids,
+            metadata_location_id: create_accession_request.metadata_location_id,
+            metadata_creator_id: create_accession_request.metadata_creator_id,
+            metadata_contributor_ids: create_accession_request.metadata_contributor_ids,
+            metadata_contributor_role_ids: create_accession_request.metadata_contributor_role_ids,
         };
         self._create_one(accession_data).await
     }
@@ -536,13 +516,11 @@ impl AccessionsRepo for DBAccessionsRepo {
             Some(accession) => {
                 let mut accession_active: AccessionActiveModel = accession.clone().into();
 
-                let location_en_id = update_accession_request.metadata_location_en_id;
-
-                let location_ar_id = update_accession_request.metadata_location_ar_id;
+                let location_id = update_accession_request.metadata_location_id;
 
                 match update_accession_request.metadata_language {
                     MetadataLanguage::English => {
-                        let creator_en_id = update_accession_request.metadata_creator_en_id;
+                        let creator_id = update_accession_request.metadata_creator_id;
                         let metadata = DublinMetadataEnActiveModel {
                             id: match accession.dublin_metadata_en {
                                 Some(id) => ActiveValue::Set(id),
@@ -552,8 +530,8 @@ impl AccessionsRepo for DBAccessionsRepo {
                             description: ActiveValue::Set(
                                 update_accession_request.metadata_description,
                             ),
-                            location_en_id: ActiveValue::Set(location_en_id),
-                            creator_en_id: ActiveValue::Set(creator_en_id),
+                            location_en_id: ActiveValue::Set(location_id),
+                            creator_en_id: ActiveValue::Set(creator_id),
                         };
                         let inserted_metadata = metadata.save(&txn).await?;
                         let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -576,20 +554,17 @@ impl AccessionsRepo for DBAccessionsRepo {
                             .filter(<entity::dublin_metadata_en_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
                             .exec(&txn)
                             .await?;
-                        if !update_accession_request
-                            .metadata_contributor_en_ids
-                            .is_empty()
-                        {
+                        if !update_accession_request.metadata_contributor_ids.is_empty() {
                             let mut new_contributor_links: Vec<
                                 DublinMetadataEnContributorsActiveModel,
                             > = vec![];
                             for (i, contributor_id) in update_accession_request
-                                .metadata_contributor_en_ids
+                                .metadata_contributor_ids
                                 .iter()
                                 .enumerate()
                             {
                                 let role_id = update_accession_request
-                                    .metadata_contributor_role_en_ids
+                                    .metadata_contributor_role_ids
                                     .get(i)
                                     .copied()
                                     .flatten();
@@ -607,7 +582,7 @@ impl AccessionsRepo for DBAccessionsRepo {
                         accession_active.dublin_metadata_en = ActiveValue::Set(Some(metadata_id));
                     }
                     MetadataLanguage::Arabic => {
-                        let creator_ar_id = update_accession_request.metadata_creator_ar_id;
+                        let creator_id = update_accession_request.metadata_creator_id;
                         let metadata = DublinMetadataArActiveModel {
                             id: match accession.dublin_metadata_ar {
                                 Some(id) => ActiveValue::Set(id),
@@ -617,8 +592,8 @@ impl AccessionsRepo for DBAccessionsRepo {
                             description: ActiveValue::Set(
                                 update_accession_request.metadata_description,
                             ),
-                            location_ar_id: ActiveValue::Set(location_ar_id),
-                            creator_ar_id: ActiveValue::Set(creator_ar_id),
+                            location_ar_id: ActiveValue::Set(location_id),
+                            creator_ar_id: ActiveValue::Set(creator_id),
                         };
                         let inserted_metadata = metadata.save(&txn).await?;
                         let metadata_id = inserted_metadata.try_into_model()?.id;
@@ -641,20 +616,17 @@ impl AccessionsRepo for DBAccessionsRepo {
                             .filter(<entity::dublin_metadata_ar_contributors::Entity as EntityTrait>::Column::MetadataId.eq(metadata_id))
                             .exec(&txn)
                             .await?;
-                        if !update_accession_request
-                            .metadata_contributor_ar_ids
-                            .is_empty()
-                        {
+                        if !update_accession_request.metadata_contributor_ids.is_empty() {
                             let mut new_contributor_links: Vec<
                                 DublinMetadataArContributorsActiveModel,
                             > = vec![];
                             for (i, contributor_id) in update_accession_request
-                                .metadata_contributor_ar_ids
+                                .metadata_contributor_ids
                                 .iter()
                                 .enumerate()
                             {
                                 let role_id = update_accession_request
-                                    .metadata_contributor_role_ar_ids
+                                    .metadata_contributor_role_ids
                                     .get(i)
                                     .copied()
                                     .flatten();
