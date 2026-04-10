@@ -22,10 +22,10 @@ use entity::{
     dublin_metadata_en_subjects,
 };
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{ExprTrait, Func};
+use sea_orm::sea_query::{ExprTrait, Func, SelectStatement};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
-    IntoActiveModel, PaginatorTrait, QueryFilter,
+    IntoActiveModel, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
 
 /// Repository implementation for database operations on locations.
@@ -130,7 +130,9 @@ impl LocationsRepo for DBLocationsRepo {
         query_term: Option<String>,
         collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataLocationArModel>, u64), DbErr> {
-        let subject_ids: Vec<i32> = if let Some(coll_id) = collection_id {
+        let mut query = DublinMetadataLocationAr::find();
+
+        if let Some(coll_id) = collection_id {
             let collection_has_subjects = CollectionArSubjects::find()
                 .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
                 .count(&self.db_session)
@@ -140,19 +142,29 @@ impl LocationsRepo for DBLocationsRepo {
                 return Ok((Vec::new(), 0));
             }
 
-            let subject_ids: Vec<i32> = CollectionArSubjects::find()
-                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.subject_ar_id)
-                .collect();
-            subject_ids
-        } else {
-            vec![]
-        };
+            let metadata_ids_subquery: SelectStatement = DublinMetadataArSubjects::find()
+                .select_only()
+                .column(dublin_metadata_ar_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_ar_subjects::Column::SubjectId.in_subquery(
+                        CollectionArSubjects::find()
+                            .select_only()
+                            .column(collection_ar_subjects::Column::SubjectArId)
+                            .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
 
-        let mut query = DublinMetadataLocationAr::find();
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_location_ar::Relation::DublinMetadataAr.def(),
+                )
+                .filter(entity::dublin_metadata_ar::Column::Id.in_subquery(metadata_ids_subquery))
+                .filter(entity::dublin_metadata_ar::Column::LocationArId.is_not_null());
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
@@ -161,36 +173,6 @@ impl LocationsRepo for DBLocationsRepo {
             ))
             .like(&query_string);
             query = query.filter(query_filter);
-        }
-
-        if !subject_ids.is_empty() {
-            let metadata_ids: Vec<i32> = DublinMetadataArSubjects::find()
-                .filter(dublin_metadata_ar_subjects::Column::SubjectId.is_in(subject_ids))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.metadata_id)
-                .collect();
-
-            if metadata_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            let location_ids: Vec<i32> = ::entity::dublin_metadata_ar::Entity::find()
-                .filter(::entity::dublin_metadata_ar::Column::Id.is_in(metadata_ids))
-                .filter(::entity::dublin_metadata_ar::Column::LocationArId.is_not_null())
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .filter_map(|m| m.location_ar_id)
-                .collect();
-
-            if location_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            query =
-                query.filter(entity::dublin_metadata_location_ar::Column::Id.is_in(location_ids));
         }
 
         let location_pages = query.paginate(&self.db_session, per_page);
@@ -205,7 +187,9 @@ impl LocationsRepo for DBLocationsRepo {
         query_term: Option<String>,
         collection_id: Option<i32>,
     ) -> Result<(Vec<DublinMetadataLocationEnModel>, u64), DbErr> {
-        let subject_ids: Vec<i32> = if let Some(coll_id) = collection_id {
+        let mut query = DublinMetadataLocationEn::find();
+
+        if let Some(coll_id) = collection_id {
             let collection_has_subjects = CollectionEnSubjects::find()
                 .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
                 .count(&self.db_session)
@@ -215,19 +199,29 @@ impl LocationsRepo for DBLocationsRepo {
                 return Ok((Vec::new(), 0));
             }
 
-            let subject_ids: Vec<i32> = CollectionEnSubjects::find()
-                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.subject_en_id)
-                .collect();
-            subject_ids
-        } else {
-            vec![]
-        };
+            let metadata_ids_subquery: SelectStatement = DublinMetadataEnSubjects::find()
+                .select_only()
+                .column(dublin_metadata_en_subjects::Column::MetadataId)
+                .filter(
+                    dublin_metadata_en_subjects::Column::SubjectId.in_subquery(
+                        CollectionEnSubjects::find()
+                            .select_only()
+                            .column(collection_en_subjects::Column::SubjectEnId)
+                            .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                            .into_query(),
+                    ),
+                )
+                .distinct()
+                .into_query();
 
-        let mut query = DublinMetadataLocationEn::find();
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_location_en::Relation::DublinMetadataEn.def(),
+                )
+                .filter(entity::dublin_metadata_en::Column::Id.in_subquery(metadata_ids_subquery))
+                .filter(entity::dublin_metadata_en::Column::LocationEnId.is_not_null());
+        }
 
         if let Some(term) = query_term {
             let query_string = format!("%{}%", term.to_lowercase());
@@ -236,36 +230,6 @@ impl LocationsRepo for DBLocationsRepo {
             ))
             .like(&query_string);
             query = query.filter(query_filter);
-        }
-
-        if !subject_ids.is_empty() {
-            let metadata_ids: Vec<i32> = DublinMetadataEnSubjects::find()
-                .filter(dublin_metadata_en_subjects::Column::SubjectId.is_in(subject_ids))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.metadata_id)
-                .collect();
-
-            if metadata_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            let location_ids: Vec<i32> = ::entity::dublin_metadata_en::Entity::find()
-                .filter(::entity::dublin_metadata_en::Column::Id.is_in(metadata_ids))
-                .filter(::entity::dublin_metadata_en::Column::LocationEnId.is_not_null())
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .filter_map(|m| m.location_en_id)
-                .collect();
-
-            if location_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            query =
-                query.filter(entity::dublin_metadata_location_en::Column::Id.is_in(location_ids));
         }
 
         let location_pages = query.paginate(&self.db_session, per_page);

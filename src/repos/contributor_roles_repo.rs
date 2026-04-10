@@ -15,7 +15,6 @@ use ::entity::dublin_metadata_contributor_role_ar::Model as DublinMetadataContri
 use ::entity::dublin_metadata_contributor_role_en::ActiveModel as DublinMetadataContributorRoleEnActiveModel;
 use ::entity::dublin_metadata_contributor_role_en::Entity as DublinMetadataContributorRoleEn;
 use ::entity::dublin_metadata_contributor_role_en::Model as DublinMetadataContributorRoleEnModel;
-use ::entity::dublin_metadata_en_contributors::Entity as DublinMetadataEnContributors;
 use ::entity::dublin_metadata_en_subjects::Entity as DublinMetadataEnSubjects;
 use async_trait::async_trait;
 use entity::{
@@ -24,10 +23,10 @@ use entity::{
     dublin_metadata_en_subjects,
 };
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{ExprTrait, Func};
+use sea_orm::sea_query::{ExprTrait, Func, SelectStatement};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
-    IntoActiveModel, PaginatorTrait, QueryFilter,
+    IntoActiveModel, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
 use std::collections::HashSet;
 
@@ -161,47 +160,32 @@ impl ContributorRolesRepo for DBContributorRolesRepo {
                 return Ok((Vec::new(), 0));
             }
 
-            let subject_ids: Vec<i32> = CollectionArSubjects::find()
-                .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.subject_ar_id)
-                .collect();
-
-            if subject_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            let metadata_ids: Vec<i32> = DublinMetadataArSubjects::find()
-                .filter(dublin_metadata_ar_subjects::Column::SubjectId.is_in(subject_ids))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.metadata_id)
-                .collect();
-
-            if metadata_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            let role_ids: Vec<i32> = entity::dublin_metadata_en_contributors::Entity::find()
+            let metadata_ids_subquery: SelectStatement = DublinMetadataArSubjects::find()
+                .select_only()
+                .column(dublin_metadata_ar_subjects::Column::MetadataId)
                 .filter(
-                    entity::dublin_metadata_en_contributors::Column::MetadataId.is_in(metadata_ids),
+                    dublin_metadata_ar_subjects::Column::SubjectId.in_subquery(
+                        CollectionArSubjects::find()
+                            .select_only()
+                            .column(collection_ar_subjects::Column::SubjectArId)
+                            .filter(collection_ar_subjects::Column::CollectionArId.eq(coll_id))
+                            .into_query(),
+                    ),
                 )
-                .filter(entity::dublin_metadata_en_contributors::Column::RoleId.is_not_null())
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .filter_map(|c| c.role_id)
-                .collect();
-
-            if role_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
+                .distinct()
+                .into_query();
 
             query = query
-                .filter(entity::dublin_metadata_contributor_role_ar::Column::Id.is_in(role_ids));
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_contributor_role_ar::Relation::DublinMetadataArContributors
+                        .def(),
+                )
+                .filter(
+                    entity::dublin_metadata_ar_contributors::Column::MetadataId
+                        .in_subquery(metadata_ids_subquery),
+                )
+                .filter(entity::dublin_metadata_ar_contributors::Column::RoleId.is_not_null());
         }
 
         if let Some(term) = query_term {
@@ -237,47 +221,32 @@ impl ContributorRolesRepo for DBContributorRolesRepo {
                 return Ok((Vec::new(), 0));
             }
 
-            let subject_ids: Vec<i32> = CollectionEnSubjects::find()
-                .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.subject_en_id)
-                .collect();
-
-            if subject_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            let metadata_ids: Vec<i32> = DublinMetadataEnSubjects::find()
-                .filter(dublin_metadata_en_subjects::Column::SubjectId.is_in(subject_ids))
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .map(|s| s.metadata_id)
-                .collect();
-
-            if metadata_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
-
-            let role_ids: Vec<i32> = DublinMetadataEnContributors::find()
+            let metadata_ids_subquery: SelectStatement = DublinMetadataEnSubjects::find()
+                .select_only()
+                .column(dublin_metadata_en_subjects::Column::MetadataId)
                 .filter(
-                    entity::dublin_metadata_en_contributors::Column::MetadataId.is_in(metadata_ids),
+                    dublin_metadata_en_subjects::Column::SubjectId.in_subquery(
+                        CollectionEnSubjects::find()
+                            .select_only()
+                            .column(collection_en_subjects::Column::SubjectEnId)
+                            .filter(collection_en_subjects::Column::CollectionEnId.eq(coll_id))
+                            .into_query(),
+                    ),
                 )
-                .filter(entity::dublin_metadata_en_contributors::Column::RoleId.is_not_null())
-                .all(&self.db_session)
-                .await?
-                .into_iter()
-                .filter_map(|c| c.role_id)
-                .collect();
-
-            if role_ids.is_empty() {
-                return Ok((Vec::new(), 0));
-            }
+                .distinct()
+                .into_query();
 
             query = query
-                .filter(entity::dublin_metadata_contributor_role_en::Column::Id.is_in(role_ids));
+                .join(
+                    JoinType::InnerJoin,
+                    entity::dublin_metadata_contributor_role_en::Relation::DublinMetadataEnContributors
+                        .def(),
+                )
+                .filter(
+                    entity::dublin_metadata_en_contributors::Column::MetadataId
+                        .in_subquery(metadata_ids_subquery),
+                )
+                .filter(entity::dublin_metadata_en_contributors::Column::RoleId.is_not_null());
         }
 
         if let Some(term) = query_term {
