@@ -175,7 +175,7 @@ impl LocationsRepo for DBLocationsRepo {
             query = query.filter(query_filter);
         }
 
-        let location_pages = query.paginate(&self.db_session, per_page);
+        let location_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = location_pages.num_pages().await?;
         Ok((location_pages.fetch_page(page).await?, num_pages))
     }
@@ -232,7 +232,7 @@ impl LocationsRepo for DBLocationsRepo {
             query = query.filter(query_filter);
         }
 
-        let location_pages = query.paginate(&self.db_session, per_page);
+        let location_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = location_pages.num_pages().await?;
         Ok((location_pages.fetch_page(page).await?, num_pages))
     }

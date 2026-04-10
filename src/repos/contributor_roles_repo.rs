@@ -197,7 +197,7 @@ impl ContributorRolesRepo for DBContributorRolesRepo {
             query = query.filter(query_filter);
         }
 
-        let role_pages = query.paginate(&self.db_session, per_page);
+        let role_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = role_pages.num_pages().await?;
         Ok((role_pages.fetch_page(page).await?, num_pages))
     }
@@ -258,7 +258,7 @@ impl ContributorRolesRepo for DBContributorRolesRepo {
             query = query.filter(query_filter);
         }
 
-        let role_pages = query.paginate(&self.db_session, per_page);
+        let role_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = role_pages.num_pages().await?;
         Ok((role_pages.fetch_page(page).await?, num_pages))
     }

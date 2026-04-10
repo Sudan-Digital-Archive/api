@@ -167,7 +167,7 @@ impl CreatorsRepo for DBCreatorsRepo {
             query = query.filter(query_filter);
         }
 
-        let creator_pages = query.paginate(&self.db_session, per_page);
+        let creator_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = creator_pages.num_pages().await?;
         Ok((creator_pages.fetch_page(page).await?, num_pages))
     }
@@ -224,7 +224,7 @@ impl CreatorsRepo for DBCreatorsRepo {
             query = query.filter(query_filter);
         }
 
-        let creator_pages = query.paginate(&self.db_session, per_page);
+        let creator_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = creator_pages.num_pages().await?;
         Ok((creator_pages.fetch_page(page).await?, num_pages))
     }

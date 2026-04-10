@@ -198,7 +198,7 @@ impl ContributorsRepo for DBContributorsRepo {
             query = query.filter(query_filter);
         }
 
-        let contributor_pages = query.paginate(&self.db_session, per_page);
+        let contributor_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = contributor_pages.num_pages().await?;
         Ok((contributor_pages.fetch_page(page).await?, num_pages))
     }
@@ -258,7 +258,7 @@ impl ContributorsRepo for DBContributorsRepo {
             query = query.filter(query_filter);
         }
 
-        let contributor_pages = query.paginate(&self.db_session, per_page);
+        let contributor_pages = query.distinct().paginate(&self.db_session, per_page);
         let num_pages = contributor_pages.num_pages().await?;
         Ok((contributor_pages.fetch_page(page).await?, num_pages))
     }
