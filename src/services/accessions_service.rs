@@ -8,7 +8,9 @@ use crate::models::request::AccessionPaginationWithPrivate;
 use crate::models::request::{
     CreateAccessionRequest, CreateAccessionRequestRaw, CreateCrawlRequest, UpdateAccessionRequest,
 };
-use crate::models::response::{GetOneAccessionResponse, ListAccessionsResponse};
+use crate::models::response::{
+    GetOneAccessionResponse, InitiateUploadResponse, ListAccessionsResponse,
+};
 use crate::repos::accessions_repo::AccessionsRepo;
 use crate::repos::auth_repo::AuthRepo;
 use crate::repos::browsertrix_repo::BrowsertrixRepo;
@@ -40,6 +42,7 @@ use validator::Validate;
 // to the archive
 static FIVE_MB: usize = 5 * 1024 * 1024;
 
+#[allow(dead_code)]
 #[derive(PartialEq, Eq)]
 enum MultiPartExtractionStep {
     ExpectMetadata,
@@ -68,6 +71,7 @@ pub struct AccessionsService {
     pub locations_service: LocationsService,
     pub creators_service: CreatorsService,
     pub contributors_service: ContributorsService,
+    pub presigned_put_url_expiry_seconds: u64,
 }
 
 impl AccessionsService {
@@ -445,6 +449,7 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Result containing the accession ID or an error response
+    #[allow(dead_code)]
     pub async fn write_one_raw(self, payload: CreateAccessionRequestRaw) -> Result<i32, Response> {
         info!(
             "Writing raw accession with title: {}",
@@ -463,6 +468,150 @@ impl AccessionsService {
         }
     }
 
+    /// Extracts metadata from multipart form (without processing file).
+    ///
+    /// # Arguments
+    /// * `multipart` - The multipart form data from the HTTP request
+    ///
+    /// # Returns
+    /// Result containing the parsed accession request or an HTTP error response
+    pub async fn extract_accession_metadata_from_multipart(
+        self,
+        mut multipart: Multipart,
+    ) -> Result<CreateAccessionRequestRaw, Response> {
+        let mut metadata_payload: Option<CreateAccessionRequestRaw> = None;
+
+        while let Some(field) = multipart.next_field().await.map_err(|e| {
+            error!("Failed to read multipart field: {e:?}");
+            (StatusCode::BAD_REQUEST, "Malformed multipart request").into_response()
+        })? {
+            let field_name = field.name().unwrap_or("unknown").to_owned();
+
+            if field_name != "metadata" {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    "Metadata field should be the first and only form field",
+                )
+                    .into_response());
+            }
+
+            let text = field.text().await.map_err(|e| {
+                error!("Failed to read metadata text: {e:?}");
+                (StatusCode::BAD_REQUEST, "Unable to read metadata field").into_response()
+            })?;
+
+            let parsed: CreateAccessionRequestRaw = serde_json::from_str(&text).map_err(|e| {
+                let error_msg = format!("Failed to parse metadata JSON: {e:?}");
+                error!(error_msg);
+                (StatusCode::BAD_REQUEST, error_msg).into_response()
+            })?;
+
+            if let Err(v_err) = parsed.validate() {
+                warn!("Invalid create accession request payload: {v_err:?}");
+                return Err((StatusCode::BAD_REQUEST, v_err.to_string()).into_response());
+            }
+
+            info!("Extracted and validated metadata JSON");
+            self.clone()
+                .validate_metadata_references(MetadataValidationParams {
+                    subjects: parsed.metadata_subjects.clone(),
+                    metadata_language: parsed.metadata_language,
+                    metadata_location_id: parsed.metadata_location_id,
+                    metadata_creator_id: parsed.metadata_creator_id,
+                    metadata_contributor_ids: parsed.metadata_contributor_ids.clone(),
+                    metadata_contributor_role_ids: parsed.metadata_contributor_role_ids.clone(),
+                })
+                .await?;
+
+            metadata_payload = Some(parsed);
+        }
+
+        metadata_payload.ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Could not extract metadata",
+            )
+                .into_response()
+        })
+    }
+
+    /// Initiates a raw file upload by creating a placeholder in S3 and returning a presigned PUT URL.
+    ///
+    /// # Arguments
+    /// * `payload` - The raw accession request with metadata (minus the file)
+    ///
+    /// # Returns
+    /// JSON response containing accession ID and presigned upload URL
+    pub async fn initiate_raw_upload(self, mut payload: CreateAccessionRequestRaw) -> Response {
+        let file_ext = match payload.metadata_format {
+            DublinMetadataFormat::Wacz => "wacz",
+        };
+
+        let unique_filename = format!("{}.{}", Uuid::new_v4(), file_ext);
+        payload.s3_filename = unique_filename.clone();
+
+        info!("Creating placeholder in S3: {}", unique_filename);
+
+        let placeholder_content = Bytes::new();
+        match self
+            .s3_repo
+            .upload_from_bytes(
+                &unique_filename,
+                placeholder_content,
+                "application/octet-stream",
+            )
+            .await
+        {
+            Ok(_) => {
+                info!("Placeholder created in S3: {}", unique_filename);
+            }
+            Err(err) => {
+                error!(%err, "Failed to create placeholder in S3: {}", unique_filename);
+                return (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "Failed to create S3 placeholder",
+                )
+                    .into_response();
+            }
+        }
+
+        let upload_url = match self
+            .s3_repo
+            .generate_presigned_put_url(&unique_filename, self.presigned_put_url_expiry_seconds)
+            .await
+        {
+            Ok(url) => {
+                info!("Generated presigned PUT URL for: {}", unique_filename);
+                url
+            }
+            Err(e) => {
+                error!("Failed to generate presigned PUT URL: {}", e);
+                return (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "Failed to generate upload URL",
+                )
+                    .into_response();
+            }
+        };
+
+        let write_result = self.accessions_repo.write_one_raw(payload).await;
+        match write_result {
+            Err(err) => {
+                error!(%err, "Error occurred writing raw accession to db");
+                let _ = self.s3_repo.delete_object(&unique_filename).await;
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response()
+            }
+            Ok(id) => {
+                info!("Raw accession written to db successfully with id {id}");
+                let response = InitiateUploadResponse {
+                    accession_id: id,
+                    upload_url,
+                };
+                (StatusCode::CREATED, Json(response)).into_response()
+            }
+        }
+    }
+
     /// Uploads from a generic stream to S3 with smart chunk handling.
     ///
     /// This method streams the bytes and decides on upload strategy as it reads:
@@ -476,6 +625,7 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Result containing the upload ID or an error response
+    #[allow(dead_code)]
     async fn upload_from_stream<S, E>(
         self,
         key: String,
@@ -682,6 +832,7 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Result containing the upload ID or an error response
+    #[allow(dead_code)]
     async fn upload_from_multipart_field(
         self,
         key: String,
@@ -849,6 +1000,7 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Result containing the parsed accession request or an HTTP error response
+    #[allow(dead_code)]
     pub async fn extract_accession_from_multipart_form(
         self,
         mut multipart: Multipart,

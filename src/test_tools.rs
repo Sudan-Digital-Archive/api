@@ -898,6 +898,14 @@ impl S3Repo for InMemoryS3Repo {
         Ok("my url".to_string())
     }
 
+    async fn generate_presigned_put_url(
+        &self,
+        _object_key: &str,
+        _expires_in: u64,
+    ) -> Result<String, Box<dyn StdError>> {
+        Ok("https://test-bucket.s3.example.com/mock-presigned-put-url".to_string())
+    }
+
     async fn initiate_multipart_upload(
         &self,
         key: &str,
@@ -953,6 +961,7 @@ pub fn build_test_accessions_service() -> AccessionsService {
         locations_service,
         creators_service,
         contributors_service,
+        presigned_put_url_expiry_seconds: 900,
     }
 }
 

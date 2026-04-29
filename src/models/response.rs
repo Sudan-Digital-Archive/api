@@ -192,6 +192,13 @@ pub struct ListAccessionsResponse {
     pub per_page: u64,
 }
 
+/// Response for initiating a raw file upload.
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct InitiateUploadResponse {
+    pub accession_id: i32,
+    pub upload_url: String,
+}
+
 /// Response containing a single subject with its identifier.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct SubjectResponse {
