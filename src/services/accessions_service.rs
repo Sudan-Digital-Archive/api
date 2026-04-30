@@ -32,7 +32,6 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use validator::Validate;
 
 // Using this as the min part size for multipart uploads to S3. This is low since this code is designed to run in
 // a very low memory container environment. Plus we don't want to allow too large uploads anyway, so we are mostly
@@ -263,7 +262,7 @@ impl AccessionsService {
                                     error!("Error occurred uploading WACZ file to S3: {:?}, aborting accession creation", err);
                                     return;
                                 };
-                                
+
                                 info!("WACZ file uploaded to S3 with filename {}", unique_filename);
                                 let create_accessions_request = CreateAccessionRequest {
                                     url: payload.url.clone(),
@@ -422,6 +421,21 @@ impl AccessionsService {
                 .into_response();
         }
 
+        if let Err(response) = self
+            .clone()
+            .validate_metadata_references(MetadataValidationParams {
+                subjects: payload.metadata_subjects.clone(),
+                metadata_language: payload.metadata_language,
+                metadata_location_id: payload.metadata_location_id,
+                metadata_creator_id: payload.metadata_creator_id,
+                metadata_contributor_ids: payload.metadata_contributor_ids.clone(),
+                metadata_contributor_role_ids: payload.metadata_contributor_role_ids.clone(),
+            })
+            .await
+        {
+            return response;
+        }
+
         let is_private = payload.is_private;
         let update_result = self.accessions_repo.update_one(id, payload).await;
         match update_result {
@@ -442,6 +456,21 @@ impl AccessionsService {
     /// # Returns
     /// JSON response containing accession ID and presigned upload URL
     pub async fn initiate_raw_upload(self, mut payload: CreateAccessionRequestRaw) -> Response {
+        if let Err(response) = self
+            .clone()
+            .validate_metadata_references(MetadataValidationParams {
+                subjects: payload.metadata_subjects.clone(),
+                metadata_language: payload.metadata_language,
+                metadata_location_id: payload.metadata_location_id,
+                metadata_creator_id: payload.metadata_creator_id,
+                metadata_contributor_ids: payload.metadata_contributor_ids.clone(),
+                metadata_contributor_role_ids: payload.metadata_contributor_role_ids.clone(),
+            })
+            .await
+        {
+            return response;
+        }
+
         let file_ext = match payload.metadata_format {
             DublinMetadataFormat::Wacz => "wacz",
         };

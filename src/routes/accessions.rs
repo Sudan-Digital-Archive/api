@@ -7,8 +7,8 @@ use crate::app_factory::AppState;
 use crate::auth::{validate_at_least_contributor, validate_at_least_researcher};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::request::{
-    AccessionPagination, AccessionPaginationWithPrivate,
-    CreateAccessionRequest, CreateAccessionRequestRaw, UpdateAccessionRequest,
+    AccessionPagination, AccessionPaginationWithPrivate, CreateAccessionRequest,
+    CreateAccessionRequestRaw, UpdateAccessionRequest,
 };
 use crate::models::response::{
     GetOneAccessionResponse, InitiateUploadResponse, ListAccessionsResponse,
@@ -311,21 +311,6 @@ async fn update_accession(
     if !validate_at_least_researcher(&authenticated_user.role) {
         return (StatusCode::FORBIDDEN, "Must have at least researcher role").into_response();
     }
-    if let Err(response) = state
-        .accessions_service
-        .clone()
-        .validate_metadata_references(MetadataValidationParams {
-            subjects: payload.metadata_subjects.clone(),
-            metadata_language: payload.metadata_language,
-            metadata_location_id: payload.metadata_location_id,
-            metadata_creator_id: payload.metadata_creator_id,
-            metadata_contributor_ids: payload.metadata_contributor_ids.clone(),
-            metadata_contributor_role_ids: payload.metadata_contributor_role_ids.clone(),
-        })
-        .await
-    {
-        return response;
-    }
 
     state.accessions_service.update_one(id, payload).await
 }
@@ -345,58 +330,12 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
-    use bytes::Bytes;
     use entity::sea_orm_active_enums::DublinMetadataFormat;
     use http_body_util::BodyExt;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use tower::ServiceExt;
     use uuid::Uuid;
-
-    async fn build_multipart_form_data(
-        metadata_json: serde_json::Value,
-        file_bytes: Vec<u8>,
-        file_name: &str,
-        file_content_type: &str,
-        metadata_first: bool,
-    ) -> Body {
-        let boundary = "------------------------abcdef1234567890";
-        let mut form_body_parts: Vec<Bytes> = Vec::new();
-
-        let metadata_part = format!(
-            "--{boundary}\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{metadata_json}\r\n",
-            boundary = boundary,
-            metadata_json = metadata_json.to_string()
-        );
-
-        if !file_name.is_empty() {
-            let file_part_header = format!(
-                "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{file_name}\"\r\nContent-Type: {file_content_type}\r\n\r\n",
-                boundary = boundary,
-                file_name = file_name,
-                file_content_type = file_content_type
-            );
-            let file_part_footer = "\r\n";
-
-            if metadata_first {
-                form_body_parts.push(Bytes::from(metadata_part.into_bytes()));
-                form_body_parts.push(Bytes::from(file_part_header.into_bytes()));
-                form_body_parts.push(Bytes::from(file_bytes));
-                form_body_parts.push(Bytes::from(file_part_footer.as_bytes()));
-            } else {
-                form_body_parts.push(Bytes::from(file_part_header.into_bytes()));
-                form_body_parts.push(Bytes::from(file_bytes));
-                form_body_parts.push(Bytes::from(file_part_footer.as_bytes()));
-                form_body_parts.push(Bytes::from(metadata_part.into_bytes()));
-            }
-        } else {
-            form_body_parts.push(Bytes::from(metadata_part.into_bytes()));
-        }
-
-        form_body_parts.push(Bytes::from(format!("--{}--\r\n", boundary).into_bytes()));
-
-        Body::from(form_body_parts.concat())
-    }
 
     #[tokio::test]
     async fn run_one_crawl() {
@@ -847,26 +786,14 @@ mod tests {
             "original_url": "https://coolurl.com",
             "s3_filename": "test-no-auth.wacz"
         });
-        let file_bytes = vec![0; 100]; // 100 bytes file
-        let body = build_multipart_form_data(
-            metadata,
-            file_bytes,
-            "test-file.wacz",
-            "application/wacz",
-            true,
-        )
-        .await;
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
                     .uri("/api/v1/accessions/raw")
-                    .header(
-                        http::header::CONTENT_TYPE,
-                        "multipart/form-data; boundary=------------------------abcdef1234567890",
-                    )
-                    .body(body)
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(serde_json::to_vec(&metadata).unwrap()))
                     .unwrap(),
             )
             .await
@@ -889,19 +816,15 @@ mod tests {
             "original_url": "https://coolurl.com",
             "s3_filename": "test-small.wacz"
         });
-        let body = build_multipart_form_data(metadata, vec![], "", "", true).await;
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
                     .uri("/api/v1/accessions/raw")
-                    .header(
-                        http::header::CONTENT_TYPE,
-                        "multipart/form-data; boundary=------------------------abcdef1234567890",
-                    )
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
-                    .body(body)
+                    .body(Body::from(serde_json::to_vec(&metadata).unwrap()))
                     .unwrap(),
             )
             .await
@@ -928,19 +851,15 @@ mod tests {
             "original_url": "https://coolurl.com",
             "s3_filename": "test-large.wacz"
         });
-        let body = build_multipart_form_data(metadata, vec![], "", "", true).await;
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
                     .uri("/api/v1/accessions/raw")
-                    .header(
-                        http::header::CONTENT_TYPE,
-                        "multipart/form-data; boundary=------------------------abcdef1234567890",
-                    )
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
-                    .body(body)
+                    .body(Body::from(serde_json::to_vec(&metadata).unwrap()))
                     .unwrap(),
             )
             .await
@@ -967,37 +886,21 @@ mod tests {
             "original_url": "https://coolurl.com",
             "s3_filename": "test-invalid-metadata.wacz"
         });
-        let file_bytes = vec![0; 100]; // 100 bytes file
-        let body = build_multipart_form_data(
-            metadata,
-            file_bytes,
-            "invalid-metadata-file.wacz",
-            "application/wacz",
-            true,
-        )
-        .await;
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
                     .uri("/api/v1/accessions/raw")
-                    .header(
-                        http::header::CONTENT_TYPE,
-                        "multipart/form-data; boundary=------------------------abcdef1234567890",
-                    )
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                     .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
-                    .body(body)
+                    .body(Body::from(serde_json::to_vec(&metadata).unwrap()))
                     .unwrap(),
             )
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        let actual = String::from_utf8((&body).to_vec()).unwrap();
-        assert!(actual
-            .contains("Failed to parse metadata JSON: Error(\"missing field `metadata_title`\""));
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]
