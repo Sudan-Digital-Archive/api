@@ -21,8 +21,6 @@ use crate::services::creators_service::CreatorsService;
 use crate::services::locations_service::LocationsService;
 use crate::services::subjects_service::SubjectsService;
 use ::entity::accessions_with_metadata::Model as AccessionWithMetadataModel;
-use axum::extract::multipart::Field;
-use axum::extract::Multipart;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -41,13 +39,6 @@ use validator::Validate;
 // using this to support streaming uploads of files that are slightly over 5MB, which will be the majority of uploads
 // to the archive
 static FIVE_MB: usize = 5 * 1024 * 1024;
-
-#[allow(dead_code)]
-#[derive(PartialEq, Eq)]
-enum MultiPartExtractionStep {
-    ExpectMetadata,
-    ExpectFile,
-}
 
 pub(crate) struct MetadataValidationParams {
     pub(crate) subjects: Vec<i32>,
@@ -272,6 +263,7 @@ impl AccessionsService {
                                     error!("Error occurred uploading WACZ file to S3: {:?}, aborting accession creation", err);
                                     return;
                                 };
+                                
                                 info!("WACZ file uploaded to S3 with filename {}", unique_filename);
                                 let create_accessions_request = CreateAccessionRequest {
                                     url: payload.url.clone(),
@@ -442,99 +434,6 @@ impl AccessionsService {
         }
     }
 
-    /// Writes a raw accession record (file-based, no crawl).
-    ///
-    /// # Arguments
-    /// * `payload` - The raw accession request with metadata and S3 filename
-    ///
-    /// # Returns
-    /// Result containing the accession ID or an error response
-    #[allow(dead_code)]
-    pub async fn write_one_raw(self, payload: CreateAccessionRequestRaw) -> Result<i32, Response> {
-        info!(
-            "Writing raw accession with title: {}",
-            payload.metadata_title
-        );
-        let write_result = self.accessions_repo.write_one_raw(payload).await;
-        match write_result {
-            Err(err) => {
-                error!(%err, "Error occurred writing raw accession to db");
-                Err((StatusCode::INTERNAL_SERVER_ERROR, "Internal database error").into_response())
-            }
-            Ok(id) => {
-                info!("Raw accession written to db successfully with id {id}");
-                Ok(id)
-            }
-        }
-    }
-
-    /// Extracts metadata from multipart form (without processing file).
-    ///
-    /// # Arguments
-    /// * `multipart` - The multipart form data from the HTTP request
-    ///
-    /// # Returns
-    /// Result containing the parsed accession request or an HTTP error response
-    pub async fn extract_accession_metadata_from_multipart(
-        self,
-        mut multipart: Multipart,
-    ) -> Result<CreateAccessionRequestRaw, Response> {
-        let mut metadata_payload: Option<CreateAccessionRequestRaw> = None;
-
-        while let Some(field) = multipart.next_field().await.map_err(|e| {
-            error!("Failed to read multipart field: {e:?}");
-            (StatusCode::BAD_REQUEST, "Malformed multipart request").into_response()
-        })? {
-            let field_name = field.name().unwrap_or("unknown").to_owned();
-
-            if field_name != "metadata" {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    "Metadata field should be the first and only form field",
-                )
-                    .into_response());
-            }
-
-            let text = field.text().await.map_err(|e| {
-                error!("Failed to read metadata text: {e:?}");
-                (StatusCode::BAD_REQUEST, "Unable to read metadata field").into_response()
-            })?;
-
-            let parsed: CreateAccessionRequestRaw = serde_json::from_str(&text).map_err(|e| {
-                let error_msg = format!("Failed to parse metadata JSON: {e:?}");
-                error!(error_msg);
-                (StatusCode::BAD_REQUEST, error_msg).into_response()
-            })?;
-
-            if let Err(v_err) = parsed.validate() {
-                warn!("Invalid create accession request payload: {v_err:?}");
-                return Err((StatusCode::BAD_REQUEST, v_err.to_string()).into_response());
-            }
-
-            info!("Extracted and validated metadata JSON");
-            self.clone()
-                .validate_metadata_references(MetadataValidationParams {
-                    subjects: parsed.metadata_subjects.clone(),
-                    metadata_language: parsed.metadata_language,
-                    metadata_location_id: parsed.metadata_location_id,
-                    metadata_creator_id: parsed.metadata_creator_id,
-                    metadata_contributor_ids: parsed.metadata_contributor_ids.clone(),
-                    metadata_contributor_role_ids: parsed.metadata_contributor_role_ids.clone(),
-                })
-                .await?;
-
-            metadata_payload = Some(parsed);
-        }
-
-        metadata_payload.ok_or_else(|| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Could not extract metadata",
-            )
-                .into_response()
-        })
-    }
-
     /// Initiates a raw file upload by creating a placeholder in S3 and returning a presigned PUT URL.
     ///
     /// # Arguments
@@ -612,6 +511,159 @@ impl AccessionsService {
         }
     }
 
+    pub async fn validate_metadata_references(
+        self,
+        params: MetadataValidationParams,
+    ) -> Result<(), Response> {
+        if !params.subjects.is_empty() {
+            let subjects_exist = self
+                .subjects_service
+                .clone()
+                .verify_subjects_exist(params.subjects, params.metadata_language)
+                .await;
+            match subjects_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        let mut location_ids: Vec<i32> = vec![];
+        if let Some(id) = params.metadata_location_id {
+            location_ids.push(id);
+        }
+        if !location_ids.is_empty() {
+            let locations_exist = self
+                .locations_service
+                .clone()
+                .verify_locations_exist(location_ids, params.metadata_language)
+                .await;
+            match locations_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Locations do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        let mut creator_ids: Vec<i32> = vec![];
+        if let Some(id) = params.metadata_creator_id {
+            creator_ids.push(id);
+        }
+        if !creator_ids.is_empty() {
+            let creators_exist = self
+                .creators_service
+                .clone()
+                .verify_creators_exist(creator_ids, params.metadata_language)
+                .await;
+            match creators_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Creators do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        if !params.metadata_contributor_ids.is_empty()
+            && params.metadata_contributor_ids.len() != params.metadata_contributor_role_ids.len()
+        {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Contributor IDs and role IDs must have the same length",
+            )
+                .into_response());
+        }
+
+        let contributor_ids: Vec<i32> = params.metadata_contributor_ids.clone();
+        let role_ids: Vec<i32> = params
+            .metadata_contributor_role_ids
+            .iter()
+            .flatten()
+            .copied()
+            .collect();
+
+        if !contributor_ids.is_empty() {
+            let contributors_exist = self
+                .contributors_service
+                .clone()
+                .verify_contributors_exist(contributor_ids.clone(), params.metadata_language)
+                .await;
+            match contributors_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err(
+                            (StatusCode::BAD_REQUEST, "Contributors do not exist").into_response()
+                        );
+                    }
+                }
+            }
+        }
+
+        if !role_ids.is_empty() {
+            let roles_exist = self
+                .contributors_service
+                .clone()
+                .verify_roles_exist(role_ids.clone(), params.metadata_language)
+                .await;
+            match roles_exist {
+                Err(err) => {
+                    return Err(
+                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                    );
+                }
+                Ok(flag) => {
+                    if !flag {
+                        return Err((StatusCode::BAD_REQUEST, "Contributor roles do not exist")
+                            .into_response());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_dublin_metadata_id(
+        &self,
+        accession_id: i32,
+        metadata_language: MetadataLanguage,
+    ) -> Result<Option<i32>, Response> {
+        self.accessions_repo
+            .get_dublin_metadata_id(accession_id, metadata_language)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())
+    }
+
     /// Uploads from a generic stream to S3 with smart chunk handling.
     ///
     /// This method streams the bytes and decides on upload strategy as it reads:
@@ -625,7 +677,6 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Result containing the upload ID or an error response
-    #[allow(dead_code)]
     async fn upload_from_stream<S, E>(
         self,
         key: String,
@@ -817,304 +868,5 @@ impl AccessionsService {
                 }
             }
         }
-    }
-
-    /// Uploads a file from a multipart field to S3 with smart chunk handling.
-    ///
-    /// This method streams the file and decides on upload strategy as it reads:
-    /// - Files under 5MB: buffered and uploaded with a single request
-    /// - Files over 5MB: multipart upload initiated and chunks streamed directly to S3
-    ///
-    /// # Arguments
-    /// * `key` - The S3 object key where the file will be uploaded
-    /// * `field` - The multipart field containing the file data
-    /// * `content_type` - The MIME type of the file
-    ///
-    /// # Returns
-    /// Result containing the upload ID or an error response
-    #[allow(dead_code)]
-    async fn upload_from_multipart_field(
-        self,
-        key: String,
-        field: Field<'_>,
-        content_type: String,
-    ) -> Result<String, Response> {
-        self.upload_from_stream(key, field, content_type).await
-    }
-
-    pub async fn validate_metadata_references(
-        self,
-        params: MetadataValidationParams,
-    ) -> Result<(), Response> {
-        if !params.subjects.is_empty() {
-            let subjects_exist = self
-                .subjects_service
-                .clone()
-                .verify_subjects_exist(params.subjects, params.metadata_language)
-                .await;
-            match subjects_exist {
-                Err(err) => {
-                    return Err(
-                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                    );
-                }
-                Ok(flag) => {
-                    if !flag {
-                        return Err(
-                            (StatusCode::BAD_REQUEST, "Subjects do not exist").into_response()
-                        );
-                    }
-                }
-            }
-        }
-
-        let mut location_ids: Vec<i32> = vec![];
-        if let Some(id) = params.metadata_location_id {
-            location_ids.push(id);
-        }
-        if !location_ids.is_empty() {
-            let locations_exist = self
-                .locations_service
-                .clone()
-                .verify_locations_exist(location_ids, params.metadata_language)
-                .await;
-            match locations_exist {
-                Err(err) => {
-                    return Err(
-                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                    );
-                }
-                Ok(flag) => {
-                    if !flag {
-                        return Err(
-                            (StatusCode::BAD_REQUEST, "Locations do not exist").into_response()
-                        );
-                    }
-                }
-            }
-        }
-
-        let mut creator_ids: Vec<i32> = vec![];
-        if let Some(id) = params.metadata_creator_id {
-            creator_ids.push(id);
-        }
-        if !creator_ids.is_empty() {
-            let creators_exist = self
-                .creators_service
-                .clone()
-                .verify_creators_exist(creator_ids, params.metadata_language)
-                .await;
-            match creators_exist {
-                Err(err) => {
-                    return Err(
-                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                    );
-                }
-                Ok(flag) => {
-                    if !flag {
-                        return Err(
-                            (StatusCode::BAD_REQUEST, "Creators do not exist").into_response()
-                        );
-                    }
-                }
-            }
-        }
-
-        if !params.metadata_contributor_ids.is_empty()
-            && params.metadata_contributor_ids.len() != params.metadata_contributor_role_ids.len()
-        {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "Contributor IDs and role IDs must have the same length",
-            )
-                .into_response());
-        }
-
-        let contributor_ids: Vec<i32> = params.metadata_contributor_ids.clone();
-        let role_ids: Vec<i32> = params
-            .metadata_contributor_role_ids
-            .iter()
-            .flatten()
-            .copied()
-            .collect();
-
-        if !contributor_ids.is_empty() {
-            let contributors_exist = self
-                .contributors_service
-                .clone()
-                .verify_contributors_exist(contributor_ids.clone(), params.metadata_language)
-                .await;
-            match contributors_exist {
-                Err(err) => {
-                    return Err(
-                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                    );
-                }
-                Ok(flag) => {
-                    if !flag {
-                        return Err(
-                            (StatusCode::BAD_REQUEST, "Contributors do not exist").into_response()
-                        );
-                    }
-                }
-            }
-        }
-
-        if !role_ids.is_empty() {
-            let roles_exist = self
-                .contributors_service
-                .clone()
-                .verify_roles_exist(role_ids.clone(), params.metadata_language)
-                .await;
-            match roles_exist {
-                Err(err) => {
-                    return Err(
-                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                    );
-                }
-                Ok(flag) => {
-                    if !flag {
-                        return Err((StatusCode::BAD_REQUEST, "Contributor roles do not exist")
-                            .into_response());
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Extracts and validates accession data from a multipart form submission.
-    ///
-    /// This method processes a multipart form containing metadata JSON and an optional file upload.
-    /// It validates the metadata, checks subject existence, uploads files to S3, and returns a
-    /// complete CreateAccessionRequestRaw object ready for database storage.
-    ///
-    /// The multipart form must have:
-    /// - First field: "metadata" containing JSON with accession metadata
-    /// - Optional subsequent fields: file uploads with filenames
-    ///
-    /// # Arguments
-    /// * `multipart` - The multipart form data from the HTTP request
-    /// * `subjects_service` - Service for validating metadata subjects exist
-    ///
-    /// # Returns
-    /// Result containing the parsed accession request or an HTTP error response
-    #[allow(dead_code)]
-    pub async fn extract_accession_from_multipart_form(
-        self,
-        mut multipart: Multipart,
-    ) -> Result<CreateAccessionRequestRaw, Response> {
-        let mut metadata_payload: Option<CreateAccessionRequestRaw> = None;
-        let mut step = MultiPartExtractionStep::ExpectMetadata; // first field must be the metadata JSON
-
-        while let Some(field) = multipart.next_field().await.map_err(|e| {
-            error!("Failed to read multipart field: {e:?}");
-            (StatusCode::BAD_REQUEST, "Malformed multipart request").into_response()
-        })? {
-            let field_name = field.name().unwrap_or("unknown").to_owned();
-            let filename_opt = field.file_name().map(str::to_owned);
-            let content_type = field
-                .content_type()
-                .map(str::to_owned)
-                .unwrap_or_else(|| "application/octet-stream".to_string());
-
-            info!(
-                "Processing multipart field: name={:?}, filename={:?}, content_type={:?}",
-                field_name, filename_opt, content_type
-            );
-
-            if step == MultiPartExtractionStep::ExpectMetadata {
-                if field_name != "metadata" {
-                    return Err((
-                        StatusCode::BAD_REQUEST,
-                        "Metadata field should be the first form field",
-                    )
-                        .into_response());
-                }
-
-                let text = field.text().await.map_err(|e| {
-                    error!("Failed to read metadata text: {e:?}");
-                    (StatusCode::BAD_REQUEST, "Unable to read metadata field").into_response()
-                })?;
-
-                let parsed: CreateAccessionRequestRaw =
-                    serde_json::from_str(&text).map_err(|e| {
-                        let error_msg = format!("Failed to parse metadata JSON: {e:?}");
-                        error!(error_msg);
-                        (StatusCode::BAD_REQUEST, error_msg).into_response()
-                    })?;
-
-                if let Err(v_err) = parsed.validate() {
-                    warn!("Invalid create accession request payload: {v_err:?}");
-                    return Err((StatusCode::BAD_REQUEST, v_err.to_string()).into_response());
-                }
-
-                info!("Extracted and validated metadata JSON");
-                self.clone()
-                    .validate_metadata_references(MetadataValidationParams {
-                        subjects: parsed.metadata_subjects.clone(),
-                        metadata_language: parsed.metadata_language,
-                        metadata_location_id: parsed.metadata_location_id,
-                        metadata_creator_id: parsed.metadata_creator_id,
-                        metadata_contributor_ids: parsed.metadata_contributor_ids.clone(),
-                        metadata_contributor_role_ids: parsed.metadata_contributor_role_ids.clone(),
-                    })
-                    .await?;
-
-                metadata_payload = Some(parsed);
-                step = MultiPartExtractionStep::ExpectFile;
-                continue;
-            }
-
-            if filename_opt.is_some() {
-                let create_request = metadata_payload.as_mut().ok_or_else(|| {
-                    (StatusCode::BAD_REQUEST, "File part arrived before metadata").into_response()
-                })?;
-
-                let file_ext = match create_request.metadata_format {
-                    DublinMetadataFormat::Wacz => "wacz",
-                };
-
-                // Discard the original filename since we have all that from the metadata
-                // Use this to make sure there are no filename collisions between objects in s3
-                let unique_name = format!("{}.{}", Uuid::new_v4(), file_ext);
-                create_request.s3_filename = unique_name.clone();
-                self.clone()
-                    .upload_from_multipart_field(unique_name.clone(), field, content_type.clone())
-                    .await
-                    .map_err(|e| {
-                        error!("Failed to upload file {unique_name}: {e:?}");
-                        e
-                    })?;
-
-                info!("Successfully uploaded file: {unique_name}");
-                if let Some(ref mut req) = metadata_payload {
-                    req.s3_filename = unique_name;
-                }
-                continue;
-            }
-
-            error!("Skipping unexpected field without filename: name={field_name}");
-        }
-
-        metadata_payload.ok_or_else(|| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Could not extract metadata",
-            )
-                .into_response()
-        })
-    }
-
-    pub async fn get_dublin_metadata_id(
-        &self,
-        accession_id: i32,
-        metadata_language: MetadataLanguage,
-    ) -> Result<Option<i32>, Response> {
-        self.accessions_repo
-            .get_dublin_metadata_id(accession_id, metadata_language)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())
     }
 }

@@ -7,15 +7,15 @@ use crate::app_factory::AppState;
 use crate::auth::{validate_at_least_contributor, validate_at_least_researcher};
 use crate::models::auth::AuthenticatedUser;
 use crate::models::request::{
-    AccessionPagination, AccessionPaginationWithPrivate, CreateAccessionRawMultipartRequest,
-    CreateAccessionRequest, UpdateAccessionRequest,
+    AccessionPagination, AccessionPaginationWithPrivate,
+    CreateAccessionRequest, CreateAccessionRequestRaw, UpdateAccessionRequest,
 };
 use crate::models::response::{
     GetOneAccessionResponse, InitiateUploadResponse, ListAccessionsResponse,
 };
 use crate::services::accessions_service::MetadataValidationParams;
 use ::entity::sea_orm_active_enums::Role;
-use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
+use axum::extract::{DefaultBodyLimit, Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
@@ -47,11 +47,7 @@ pub fn get_accessions_routes(max_file_upload_size: usize) -> Router<AppState> {
     post,
     path = "/api/v1/accessions/raw",
     tag = "Accessions",
-    request_body(
-        content = CreateAccessionRawMultipartRequest,
-        content_type = "multipart/form-data",
-        description = "Multipart upload request. \n\n**Important:** The `metadata` field MUST be the first part of the form and contain the JSON metadata. Do NOT include a file field - you will receive a presigned URL to upload directly to S3."
-    ),
+    request_body = CreateAccessionRequestRaw,
     responses(
         (status = 201, description = "Accession created, returns presigned URL for direct S3 upload", body = InitiateUploadResponse),
         (status = 400, description = "Bad request"),
@@ -63,30 +59,38 @@ pub fn get_accessions_routes(max_file_upload_size: usize) -> Router<AppState> {
         ("api_key_auth" = [])
     )
 )]
-#[axum::debug_handler]
 async fn create_accession_raw(
     State(state): State<AppState>,
     authenticated_user: AuthenticatedUser,
-    multipart: Multipart,
+    Json(payload): Json<CreateAccessionRequestRaw>,
 ) -> Response {
     if !validate_at_least_contributor(&authenticated_user.role) {
         return (StatusCode::FORBIDDEN, "Must have at least contributor role").into_response();
     }
-    info!("Received raw accession creation request via multipart/form-data");
-    let create_accession_raw_request = match state
+    info!("Received raw accession creation request via JSON");
+    if let Err(err) = payload.validate() {
+        return (StatusCode::BAD_REQUEST, err.to_string()).into_response();
+    }
+    if let Err(response) = state
         .accessions_service
         .clone()
-        .extract_accession_metadata_from_multipart(multipart)
+        .validate_metadata_references(MetadataValidationParams {
+            subjects: payload.metadata_subjects.clone(),
+            metadata_language: payload.metadata_language,
+            metadata_location_id: payload.metadata_location_id,
+            metadata_creator_id: payload.metadata_creator_id,
+            metadata_contributor_ids: payload.metadata_contributor_ids.clone(),
+            metadata_contributor_role_ids: payload.metadata_contributor_role_ids.clone(),
+        })
         .await
     {
-        Ok(data) => data,
-        Err(response) => return response,
-    };
+        return response;
+    }
 
     state
         .accessions_service
         .clone()
-        .initiate_raw_upload(create_accession_raw_request)
+        .initiate_raw_upload(payload)
         .await
 }
 
