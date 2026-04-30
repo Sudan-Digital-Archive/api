@@ -32,6 +32,10 @@ pub enum DublinMetadataFormat {
     #[serde(rename = "wacz")]
     #[schema(rename = "wacz")]
     Wacz,
+    #[sea_orm(string_value = "mp4")]
+    #[serde(rename = "mp4")]
+    #[schema(rename = "mp4")]
+    Mp4,
 }
 #[derive(
     Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize, ToSchema,
