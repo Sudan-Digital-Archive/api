@@ -67,6 +67,26 @@ pub trait S3Repo: Send + Sync {
         expires_in: u64,
     ) -> Result<String, Box<dyn Error>>;
 
+    /// Generates a presigned URL for PUTting an object to S3.
+    ///
+    /// # Arguments
+    /// * `object_key` - The key (path) of the object in the S3 bucket
+    /// * `expires_in` - Duration in seconds until the presigned URL expires
+    ///
+    /// # Returns
+    /// A presigned URL that can be used to upload the object for the specified duration
+    ///
+    /// # Errors
+    /// Returns Error if:
+    /// * The presigning configuration fails
+    /// * The presigned URL generation fails
+    /// * The expiration time is invalid
+    async fn generate_presigned_put_url(
+        &self,
+        object_key: &str,
+        expires_in: u64,
+    ) -> Result<String, Box<dyn Error>>;
+
     /// Initiates a multipart upload to S3.
     ///
     /// # Arguments
@@ -274,6 +294,42 @@ impl S3Repo for DigitalOceanSpacesRepo {
             )
             .await
             .map_err(|e| format!("Failed to generate presigned URL: {e}"))?;
+
+        Ok(presigned_request.uri().to_string())
+    }
+
+    /// Generates a presigned URL for PUTting an object to S3.
+    ///
+    /// # Arguments
+    /// * `object_key` - The key (path) of the object in the S3 bucket
+    /// * `expires_in` - Duration in seconds until the presigned URL expires
+    ///
+    /// # Returns
+    /// A presigned URL that can be used to upload the object for the specified duration
+    ///
+    /// # Errors
+    /// Returns Error if:
+    /// * The presigning configuration fails
+    /// * The presigned URL generation fails
+    /// * The expiration time is invalid
+    async fn generate_presigned_put_url(
+        &self,
+        object_key: &str,
+        expires_in: u64,
+    ) -> Result<String, Box<dyn Error>> {
+        let expires_in = std::time::Duration::from_secs(expires_in);
+
+        let presigning_config = PresigningConfig::expires_in(expires_in)
+            .map_err(|e| format!("Failed to create presigning config: {e}"))?;
+
+        let presigned_request = self
+            .client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(object_key)
+            .presigned(presigning_config)
+            .await
+            .map_err(|e| format!("Failed to generate presigned PUT URL: {e}"))?;
 
         Ok(presigned_request.uri().to_string())
     }
