@@ -59,15 +59,14 @@ pub fn apply_subjects_filter(expr: SimpleExpr, subjects: MetadataIds, column: Ex
     }
 }
 
-/// Apply URL filter using LIKE pattern matching.
+/// Apply URL filter using case-insensitive LIKE pattern matching.
 ///
-/// Filters records where `seed_url` starts with the given URL pattern.
+/// Filters records where `seed_url` contains the given URL pattern (full match).
 pub fn apply_url_filter(expr: SimpleExpr, url: &str) -> SimpleExpr {
     use entity::accessions_with_metadata;
-    use sea_orm::ColumnTrait;
 
-    let url_like = format!("{}%", url);
-    expr.and(accessions_with_metadata::Column::SeedUrl.like(url_like))
+    let url_like = format!("%{}%", url);
+    expr.and(Expr::expr(accessions_with_metadata::Column::SeedUrl.into_expr()).ilike(url_like))
 }
 
 /// Apply location text filter using case-insensitive LIKE pattern matching.
@@ -242,8 +241,9 @@ mod tests {
         let base = Expr::col(Column::HasEnglishMetadata).eq(true);
         let result = apply_url_filter(base, "https://example.com");
 
-        assert!(format!("{:?}", result).contains("seed_url"));
-        assert!(format!("{:?}", result).contains("example.com%"));
+        let formatted = format!("{:?}", result);
+        assert!(formatted.contains("seed_url"));
+        assert!(formatted.contains("%https://example.com%"));
     }
 
     #[test]

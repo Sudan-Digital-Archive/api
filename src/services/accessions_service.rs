@@ -473,6 +473,7 @@ impl AccessionsService {
 
         let file_ext = match payload.metadata_format {
             DublinMetadataFormat::Wacz => "wacz",
+            DublinMetadataFormat::Mp4 => "mp4",
         };
 
         let unique_filename = format!("{}.{}", Uuid::new_v4(), file_ext);
