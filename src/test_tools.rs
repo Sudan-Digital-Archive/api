@@ -73,6 +73,7 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
     async fn write_one_raw(
         &self,
         _create_accession_request: CreateAccessionRequestRaw,
+        _s3_filename: String,
     ) -> Result<i32, DbErr> {
         Ok(10)
     }

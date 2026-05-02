@@ -57,7 +57,6 @@ pub struct CreateAccessionRequestRaw {
     pub metadata_format: DublinMetadataFormat,
     #[validate(url)]
     pub original_url: String,
-    pub s3_filename: String,
     pub metadata_location_id: Option<i32>,
     pub metadata_creator_id: Option<i32>,
     #[serde(default)]

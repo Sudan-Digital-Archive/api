@@ -783,8 +783,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-no-auth.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app
@@ -813,8 +812,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-small.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app
@@ -848,8 +846,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-large.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app
@@ -883,8 +880,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-invalid-metadata.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app

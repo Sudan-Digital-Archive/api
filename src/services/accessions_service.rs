@@ -455,7 +455,7 @@ impl AccessionsService {
     ///
     /// # Returns
     /// JSON response containing accession ID and presigned upload URL
-    pub async fn initiate_raw_upload(self, mut payload: CreateAccessionRequestRaw) -> Response {
+    pub async fn initiate_raw_upload(self, payload: CreateAccessionRequestRaw) -> Response {
         if let Err(response) = self
             .clone()
             .validate_metadata_references(MetadataValidationParams {
@@ -477,7 +477,6 @@ impl AccessionsService {
         };
 
         let unique_filename = format!("{}.{}", Uuid::new_v4(), file_ext);
-        payload.s3_filename = unique_filename.clone();
 
         info!("Creating placeholder in S3: {}", unique_filename);
 
@@ -523,7 +522,7 @@ impl AccessionsService {
             }
         };
 
-        let write_result = self.accessions_repo.write_one_raw(payload).await;
+        let write_result = self.accessions_repo.write_one_raw(payload, unique_filename.clone()).await;
         match write_result {
             Err(err) => {
                 error!(%err, "Error occurred writing raw accession to db");
