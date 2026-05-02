@@ -98,7 +98,7 @@ pub fn build_app_config() -> AppConfig {
         .parse()
         .expect("PRESIGNED_PUT_URL_EXPIRY_SECONDS should be a number");
     let presigned_get_url_expiry_seconds = env::var("PRESIGNED_GET_URL_EXPIRY_SECONDS")
-        .unwrap_or("3600".to_string())
+        .expect("Missing PRESIGNED_GET_URL_EXPIRY_SECONDS env var")
         .parse()
         .expect("PRESIGNED_GET_URL_EXPIRY_SECONDS should be a number");
     let s3_operation_timeout = env::var("S3_OPERATION_TIMEOUT")
