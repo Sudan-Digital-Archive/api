@@ -522,7 +522,10 @@ impl AccessionsService {
             }
         };
 
-        let write_result = self.accessions_repo.write_one_raw(payload, unique_filename.clone()).await;
+        let write_result = self
+            .accessions_repo
+            .write_one_raw(payload, unique_filename.clone())
+            .await;
         match write_result {
             Err(err) => {
                 error!(%err, "Error occurred writing raw accession to db");
