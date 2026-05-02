@@ -128,6 +128,7 @@ async fn main() {
         creators_service: creators_service.clone(),
         contributors_service: contributors_service.clone(),
         presigned_put_url_expiry_seconds: app_config.presigned_put_url_expiry_seconds,
+        presigned_get_url_expiry_seconds: app_config.presigned_get_url_expiry_seconds,
     };
     let auth_service = AuthService {
         auth_repo: Arc::new(auth_repo),

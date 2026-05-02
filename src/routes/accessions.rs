@@ -483,7 +483,7 @@ mod tests {
         let mocked_resp = mock_one_accession_with_metadata();
         let expected = GetOneAccessionResponse {
             accession: mocked_resp.into(),
-            wacz_url: "my url".to_owned(),
+            s3_url: "my url".to_owned(),
         };
         assert_eq!(actual, expected)
     }
@@ -507,7 +507,7 @@ mod tests {
         let mocked_query = mock_one_accession_with_metadata();
         let expected = GetOneAccessionResponse {
             accession: mocked_query.into(),
-            wacz_url: "my url".to_owned(),
+            s3_url: "my url".to_owned(),
         };
         assert_eq!(actual, expected)
     }
@@ -531,7 +531,7 @@ mod tests {
         let mocked_resp = mock_one_accession_with_metadata();
         let expected = GetOneAccessionResponse {
             accession: mocked_resp.into(),
-            wacz_url: "my url".to_owned(),
+            s3_url: "my url".to_owned(),
         };
         assert_eq!(actual, expected)
     }
@@ -765,7 +765,7 @@ mod tests {
         let mocked_resp = mock_one_accession_with_metadata();
         let expected = GetOneAccessionResponse {
             accession: mocked_resp.into(),
-            wacz_url: "my url".to_owned(),
+            s3_url: "my url".to_owned(),
         };
         assert_eq!(actual, expected)
     }

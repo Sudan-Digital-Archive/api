@@ -2,7 +2,7 @@
 name = "entity"
 version = "0.1.0"
 edition = "2021"
-license = "CC0-1.0" 
+license = "BSD-3-Clause" 
 workspace = ".."
 
 [dependencies]

@@ -180,7 +180,7 @@ pub struct WaczItem {
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, ToSchema)]
 pub struct GetOneAccessionResponse {
     pub accession: AccessionsWithMetadataResponse,
-    pub wacz_url: String,
+    pub s3_url: String,
 }
 
 /// Response for listing accessions with pagination.
