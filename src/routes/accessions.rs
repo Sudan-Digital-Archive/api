@@ -352,7 +352,6 @@ mod tests {
                     metadata_subjects: vec![1, 2, 3],
                     is_private: false,
                     metadata_format: DublinMetadataFormat::Wacz,
-                    s3_filename: Some("test-file.wacz".to_string()),
                     send_email_notification: true,
                     metadata_location_id: None,
                     metadata_creator_id: None,
@@ -379,7 +378,6 @@ mod tests {
                     browser_profile: None,
                     is_private: true,
                     metadata_format: DublinMetadataFormat::Wacz,
-                    s3_filename: Some("test-file-2.wacz".to_string()),
                     send_email_notification: true,
                     metadata_location_id: None,
                     metadata_creator_id: None,
@@ -783,8 +781,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-no-auth.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app
@@ -813,8 +810,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-small.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app
@@ -848,8 +844,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-large.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app
@@ -883,8 +878,7 @@ mod tests {
             "metadata_subjects": [1],
             "is_private": false,
             "metadata_format": "wacz",
-            "original_url": "https://coolurl.com",
-            "s3_filename": "test-invalid-metadata.wacz"
+            "original_url": "https://coolurl.com"
         });
 
         let response = app

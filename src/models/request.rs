@@ -28,7 +28,6 @@ pub struct CreateAccessionRequest {
     pub metadata_subjects: Vec<i32>,
     pub is_private: bool,
     pub metadata_format: DublinMetadataFormat,
-    pub s3_filename: Option<String>,
     #[serde(default = "bool::default")]
     pub send_email_notification: bool,
     pub metadata_location_id: Option<i32>,
@@ -57,7 +56,6 @@ pub struct CreateAccessionRequestRaw {
     pub metadata_format: DublinMetadataFormat,
     #[validate(url)]
     pub original_url: String,
-    pub s3_filename: String,
     pub metadata_location_id: Option<i32>,
     pub metadata_creator_id: Option<i32>,
     #[serde(default)]
