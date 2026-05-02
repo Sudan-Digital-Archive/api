@@ -72,6 +72,7 @@ pub trait AccessionsRepo: Send + Sync {
         crawl_id: Uuid,
         job_run_id: String,
         crawl_status: CrawlStatus,
+        s3_filename: String,
     ) -> Result<i32, DbErr>;
 
     /// Creates a new accession record from a raw file upload (without a web crawl).
@@ -288,6 +289,7 @@ impl AccessionsRepo for DBAccessionsRepo {
         crawl_id: Uuid,
         job_run_id: String,
         crawl_status: CrawlStatus,
+        s3_filename: String,
     ) -> Result<i32, DbErr> {
         let accession_data = CreateAccessionData {
             metadata_language: create_accession_request.metadata_language,
@@ -302,7 +304,7 @@ impl AccessionsRepo for DBAccessionsRepo {
             seed_url: create_accession_request.url,
             is_private: create_accession_request.is_private,
             metadata_format: create_accession_request.metadata_format,
-            s3_filename: create_accession_request.s3_filename,
+            s3_filename: Some(s3_filename),
             metadata_location_id: create_accession_request.metadata_location_id,
             metadata_creator_id: create_accession_request.metadata_creator_id,
             metadata_contributor_ids: create_accession_request.metadata_contributor_ids,

@@ -274,7 +274,6 @@ impl AccessionsService {
                                     metadata_subjects: payload.metadata_subjects,
                                     is_private: payload.is_private,
                                     metadata_format: DublinMetadataFormat::Wacz,
-                                    s3_filename: Some(unique_filename.clone()),
                                     send_email_notification: payload.send_email_notification,
                                     metadata_location_id: payload.metadata_location_id,
                                     metadata_creator_id: payload.metadata_creator_id,
@@ -290,6 +289,7 @@ impl AccessionsService {
                                         resp.id,
                                         resp.run_now_job,
                                         CrawlStatus::Complete,
+                                        unique_filename,
                                     )
                                     .await;
                                 match write_result {

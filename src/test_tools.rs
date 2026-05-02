@@ -65,6 +65,7 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
         _crawl_id: Uuid,
         _job_run_id: String,
         _crawl_status: CrawlStatus,
+        _s3_filename: String,
     ) -> Result<i32, DbErr> {
         Ok(10)
     }

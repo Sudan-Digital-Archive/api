@@ -28,7 +28,6 @@ pub struct CreateAccessionRequest {
     pub metadata_subjects: Vec<i32>,
     pub is_private: bool,
     pub metadata_format: DublinMetadataFormat,
-    pub s3_filename: Option<String>,
     #[serde(default = "bool::default")]
     pub send_email_notification: bool,
     pub metadata_location_id: Option<i32>,
