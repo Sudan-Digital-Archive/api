@@ -62,6 +62,7 @@ pub struct AccessionsService {
     pub creators_service: CreatorsService,
     pub contributors_service: ContributorsService,
     pub presigned_put_url_expiry_seconds: u64,
+    pub presigned_get_url_expiry_seconds: u64,
 }
 
 impl AccessionsService {
@@ -141,11 +142,15 @@ impl AccessionsService {
         ) {
             // If it has an s3 filename, then we know its in our own digital ocean spaces storage
             (Some(s3_filename), DublinMetadataFormat::Wacz) => {
-                match self.s3_repo.get_presigned_url(s3_filename, 3600).await {
+                match self
+                    .s3_repo
+                    .get_presigned_url(s3_filename, self.presigned_get_url_expiry_seconds)
+                    .await
+                {
                     Ok(presigned_url) => {
                         let resp = GetOneAccessionResponse {
                             accession: accession_for_response.into(),
-                            wacz_url: presigned_url,
+                            s3_url: presigned_url,
                         };
                         Json(resp).into_response()
                     }
@@ -159,22 +164,42 @@ impl AccessionsService {
                     }
                 }
             }
+            (Some(s3_filename), DublinMetadataFormat::Mp4) => {
+                match self
+                    .s3_repo
+                    .get_presigned_url(s3_filename, self.presigned_get_url_expiry_seconds)
+                    .await
+                {
+                    Ok(presigned_url) => {
+                        let resp = GetOneAccessionResponse {
+                            accession: accession_for_response.into(),
+                            s3_url: presigned_url,
+                        };
+                        Json(resp).into_response()
+                    }
+                    Err(err) => {
+                        error!(%err, "Error occurred generating presigned url");
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "Could not retrieving media url from s3 storage",
+                        )
+                            .into_response()
+                    }
+                }
+            }
             _ => {
                 if let Some(ref job_run_id) = accession.job_run_id {
                     match self.browsertrix_repo.get_wacz_url(job_run_id).await {
-                        Ok(wacz_url) => {
+                        Ok(s3_url) => {
                             let resp = GetOneAccessionResponse {
                                 accession: accession_for_response.into(),
-                                wacz_url,
+                                s3_url,
                             };
                             Json(resp).into_response()
                         }
                         Err(err) => {
-                            error!(%err, "Error occurred retrieving wacz url");
-                            (
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                "Error retrieving wacz url",
-                            )
+                            error!(%err, "Error occurred retrieving s3 url");
+                            (StatusCode::INTERNAL_SERVER_ERROR, "Error retrieving s3 url")
                                 .into_response()
                         }
                     }

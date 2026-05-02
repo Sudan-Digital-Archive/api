@@ -964,6 +964,7 @@ pub fn build_test_accessions_service() -> AccessionsService {
         creators_service,
         contributors_service,
         presigned_put_url_expiry_seconds: 900,
+        presigned_get_url_expiry_seconds: 3600,
     }
 }
 

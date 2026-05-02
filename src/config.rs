@@ -36,6 +36,7 @@ pub struct AppConfig {
     pub digital_ocean_spaces_secret_key: String,
     pub max_file_upload_size: usize,
     pub presigned_put_url_expiry_seconds: u64,
+    pub presigned_get_url_expiry_seconds: u64,
     pub s3_operation_timeout: u64,
     pub s3_operation_attempt_timeout: u64,
     pub s3_connect_timeout: u64,
@@ -96,6 +97,10 @@ pub fn build_app_config() -> AppConfig {
         .expect("Missing PRESIGNED_PUT_URL_EXPIRY_SECONDS env var")
         .parse()
         .expect("PRESIGNED_PUT_URL_EXPIRY_SECONDS should be a number");
+    let presigned_get_url_expiry_seconds = env::var("PRESIGNED_GET_URL_EXPIRY_SECONDS")
+        .unwrap_or("3600".to_string())
+        .parse()
+        .expect("PRESIGNED_GET_URL_EXPIRY_SECONDS should be a number");
     let s3_operation_timeout = env::var("S3_OPERATION_TIMEOUT")
         .unwrap_or("30".to_string())
         .parse()
@@ -129,6 +134,7 @@ pub fn build_app_config() -> AppConfig {
         digital_ocean_spaces_secret_key,
         max_file_upload_size,
         presigned_put_url_expiry_seconds,
+        presigned_get_url_expiry_seconds,
         s3_operation_timeout,
         s3_operation_attempt_timeout,
         s3_connect_timeout,
