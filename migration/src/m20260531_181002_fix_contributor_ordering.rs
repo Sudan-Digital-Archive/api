@@ -18,20 +18,24 @@ enum DublinMetadataArContributors {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-  manager
-    .get_connection()
-    .execute_unprepared("ALTER TABLE dublin_metadata_en_contributors ADD COLUMN order_id SERIAL")
-    .await?;
+        manager
+            .get_connection()
+            .execute_unprepared(
+                "ALTER TABLE dublin_metadata_en_contributors ADD COLUMN order_id SERIAL",
+            )
+            .await?;
 
-    manager
-    .get_connection()
-    .execute_unprepared("ALTER TABLE dublin_metadata_ar_contributors ADD COLUMN order_id SERIAL")
-    .await?;
+        manager
+            .get_connection()
+            .execute_unprepared(
+                "ALTER TABLE dublin_metadata_ar_contributors ADD COLUMN order_id SERIAL",
+            )
+            .await?;
 
-    manager
-    .get_connection()
-    .execute_unprepared(
-        r#"
+        manager
+            .get_connection()
+            .execute_unprepared(
+                r#"
         UPDATE dublin_metadata_en_contributors dmoec
         SET order_id = subseq.rn
         FROM (
@@ -42,13 +46,13 @@ impl MigrationTrait for Migration {
         WHERE dmoec.metadata_id = subseq.metadata_id
           AND dmoec.contributor_id = subseq.contributor_id
         "#,
-    )
-    .await?;
+            )
+            .await?;
 
-    manager
-    .get_connection()
-    .execute_unprepared(
-        r#"
+        manager
+            .get_connection()
+            .execute_unprepared(
+                r#"
         UPDATE dublin_metadata_ar_contributors dmoac
         SET order_id = subseq.rn
         FROM (
@@ -59,8 +63,8 @@ impl MigrationTrait for Migration {
         WHERE dmoac.metadata_id = subseq.metadata_id
           AND dmoac.contributor_id = subseq.contributor_id
         "#,
-    )
-    .await?;
+            )
+            .await?;
 
         manager
             .create_index(
