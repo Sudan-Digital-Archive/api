@@ -24,6 +24,7 @@ mod m20260313_000000_add_filter_ids_to_view;
 mod m20260403_162149_fix_view_regression_contributors;
 mod m20260405_151806_refactor_nullish_contributors;
 mod m20260430_205701_add_mp4_media_format;
+mod m20260531_181002_fix_contributor_ordering;
 
 pub struct Migrator;
 
@@ -56,6 +57,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260403_162149_fix_view_regression_contributors::Migration),
             Box::new(m20260405_151806_refactor_nullish_contributors::Migration),
             Box::new(m20260430_205701_add_mp4_media_format::Migration),
+            Box::new(m20260531_181002_fix_contributor_ordering::Migration),
         ]
     }
 }
