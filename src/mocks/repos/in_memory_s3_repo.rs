@@ -3,6 +3,10 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use std::error::Error as StdError;
 
+/// In-memory mock for S3Repo.
+/// IMPORTANT: Stores nothing - all upload operations return mock URLs/etags.
+/// Presigned URLs are fake but correctly formatted.
+/// Use for testing route handlers without actual file storage.
 #[derive(Debug, Clone, Default)]
 pub struct InMemoryS3Repo {}
 

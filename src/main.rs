@@ -8,6 +8,9 @@ mod repos;
 mod routes;
 mod services;
 
+#[cfg(test)]
+mod test_utils;
+
 use crate::app_factory::{build_app, create_app};
 use crate::config::build_app_config;
 use std::net::SocketAddr;

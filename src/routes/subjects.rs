@@ -180,11 +180,11 @@ async fn update_subject(
 #[cfg(test)]
 mod tests {
 
-    use crate::mocks::builders::{
-        build_test_app, get_mock_jwt, mock_paginated_subjects_ar, mock_paginated_subjects_en,
-    };
     use crate::models::response::{
         ListSubjectsArResponse, ListSubjectsEnResponse, SubjectResponse,
+    };
+    use crate::test_utils::{
+        create_test_app, get_mock_jwt, mock_paginated_subjects_ar, mock_paginated_subjects_en,
     };
     use axum::{
         body::Body,
@@ -197,7 +197,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_subject_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -220,7 +220,7 @@ mod tests {
     }
     #[tokio::test]
     async fn create_one_subject_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -248,7 +248,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_subject_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -276,7 +276,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_subjects_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -297,7 +297,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_subjects_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -318,7 +318,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_subjects_defaults() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -339,7 +339,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_subject_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -362,7 +362,7 @@ mod tests {
     }
     #[tokio::test]
     async fn delete_one_subject_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -386,7 +386,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_subject_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -410,7 +410,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_subject_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()

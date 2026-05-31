@@ -5,6 +5,10 @@ use async_trait::async_trait;
 use reqwest::{RequestBuilder, Response};
 use uuid::Uuid;
 
+/// In-memory mock for BrowsertrixRepo.
+/// IMPORTANT: Returns mock URLs and statuses without contacting Browsertrix API.
+/// Crawls are marked as "complete" immediately without actual crawling.
+/// Use for testing route handlers and service logic without external dependencies.
 pub struct InMemoryBrowsertrixRepo {}
 
 impl InMemoryBrowsertrixRepo {

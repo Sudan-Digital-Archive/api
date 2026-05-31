@@ -90,16 +90,21 @@ pub struct AppState {
 /// real database/external service implementations or in-memory mocks based on
 /// the MOCK_* environment variables.
 pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), Box<dyn StdError>> {
-    let mut opt = ConnectOptions::new(app_config.postgres_url.clone());
-    opt.sqlx_logging(!app_config.disable_sql_logging);
-    let db_session = Database::connect(opt).await?;
+    let need_db = !app_config.mock_db || !app_config.mock_auth || !app_config.mock_postmark;
+    let db_session = if need_db {
+        let mut opt = ConnectOptions::new(app_config.postgres_url.clone());
+        opt.sqlx_logging(!app_config.disable_sql_logging);
+        Some(Database::connect(opt).await?)
+    } else {
+        None
+    };
 
     let accessions_repo: Arc<dyn crate::repos::accessions_repo::AccessionsRepo> =
         if app_config.mock_db {
             Arc::new(InMemoryAccessionsRepo::default())
         } else {
             Arc::new(DBAccessionsRepo {
-                db_session: db_session.clone(),
+                db_session: db_session.clone().unwrap(),
             })
         };
 
@@ -107,7 +112,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
         Arc::new(InMemoryAuthRepo::default())
     } else {
         Arc::new(DBAuthRepo {
-            db_session: db_session.clone(),
+            db_session: db_session.clone().unwrap(),
             expiry_hours: app_config.jwt_expiry_hours,
         })
     };
@@ -127,7 +132,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
         Arc::new(InMemorySubjectsRepo::default())
     } else {
         Arc::new(DBSubjectsRepo {
-            db_session: db_session.clone(),
+            db_session: db_session.clone().unwrap(),
         })
     };
 
@@ -136,7 +141,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
         Arc::new(InMemoryLocationsRepo::default())
     } else {
         Arc::new(DBLocationsRepo {
-            db_session: db_session.clone(),
+            db_session: db_session.clone().unwrap(),
         })
     };
 
@@ -145,7 +150,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
         Arc::new(InMemoryRelationsRepo::default())
     } else {
         Arc::new(DBRelationsRepo {
-            db_session: db_session.clone(),
+            db_session: db_session.clone().unwrap(),
         })
     };
 
@@ -153,7 +158,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
         Arc::new(InMemoryCreatorsRepo::default())
     } else {
         Arc::new(DBCreatorsRepo {
-            db_session: db_session.clone(),
+            db_session: db_session.clone().unwrap(),
         })
     };
 
@@ -162,7 +167,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
             Arc::new(InMemoryContributorsRepo::default())
         } else {
             Arc::new(DBContributorsRepo {
-                db_session: db_session.clone(),
+                db_session: db_session.clone().unwrap(),
             })
         };
 
@@ -172,7 +177,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
         Arc::new(InMemoryContributorRolesRepo::default())
     } else {
         Arc::new(DBContributorRolesRepo {
-            db_session: db_session.clone(),
+            db_session: db_session.clone().unwrap(),
         })
     };
 
@@ -181,7 +186,7 @@ pub async fn build_app(app_config: &AppConfig) -> Result<(AppState, AppConfig), 
             Arc::new(InMemoryCollectionsRepo::default())
         } else {
             Arc::new(DBCollectionsRepo {
-                db_session: db_session.clone(),
+                db_session: db_session.clone().unwrap(),
             })
         };
 
@@ -347,7 +352,7 @@ fn build_routes(api: utoipa::openapi::OpenApi, app_config: AppConfig) -> Router<
             Duration::from_secs(120),
         ))
         .layer(CompressionLayer::new());
-    let accessions_routes = get_accessions_routes(app_config.max_file_upload_size);
+    let accessions_routes = get_accessions_routes();
     let collections_routes = get_collections_routes();
     let subjects_routes = get_subjects_routes();
     let locations_routes = get_locations_routes();

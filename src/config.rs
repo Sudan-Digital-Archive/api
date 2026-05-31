@@ -34,7 +34,6 @@ pub struct AppConfig {
     pub digital_ocean_spaces_bucket: String,
     pub digital_ocean_spaces_access_key: String,
     pub digital_ocean_spaces_secret_key: String,
-    pub max_file_upload_size: usize,
     pub presigned_put_url_expiry_seconds: u64,
     pub presigned_get_url_expiry_seconds: u64,
     pub s3_operation_timeout: u64,
@@ -61,18 +60,25 @@ pub struct AppConfig {
 
 /// Builds application configuration from environment variables
 pub fn build_app_config() -> AppConfig {
-    let postgres_url = env::var("POSTGRES_URL").expect("Missing POSTGRES_URL env var");
+    let mock_db = env::var("MOCK_DB").unwrap_or_default() == "true";
+    let postgres_url = if mock_db {
+        env::var("POSTGRES_URL")
+            .unwrap_or_else(|_| "postgres://mock:mock@localhost/mock".to_string())
+    } else {
+        env::var("POSTGRES_URL").expect("Missing POSTGRES_URL env var")
+    };
     let archive_sender_email =
-        env::var("ARCHIVE_SENDER_EMAIL").expect("Missing ARCHIVE_SENDER_EMAIL env var");
+        env::var("ARCHIVE_SENDER_EMAIL").unwrap_or_else(|_| "test@example.com".to_string());
     let postmark_api_base =
-        env::var("POSTMARK_API_BASE").expect("Missing POSTMARK_API_BASE env var");
-    let postmark_api_key = env::var("POSTMARK_API_KEY").expect("Missing POSTMARK_API_KEY env var");
-    let username = env::var("BROWSERTRIX_USERNAME").expect("Missing BROWSERTRIX_USERNAME env var");
-    let password = env::var("BROWSERTRIX_PASSWORD").expect("Missing BROWSERTRIX_PASSWORD env var");
-    let org_id = env::var("BROWSERTRIX_ORGID").expect("Missing BROWSERTRIX_ORGID env var");
+        env::var("POSTMARK_API_BASE").unwrap_or_else(|_| "https://api.postmark.com".to_string());
+    let postmark_api_key =
+        env::var("POSTMARK_API_KEY").unwrap_or_else(|_| "mock_postmark_key".to_string());
+    let username = env::var("BROWSERTRIX_USERNAME").unwrap_or_else(|_| "mock_user".to_string());
+    let password = env::var("BROWSERTRIX_PASSWORD").unwrap_or_else(|_| "mock_password".to_string());
+    let org_id = env::var("BROWSERTRIX_ORGID").unwrap_or_else(|_| Uuid::new_v4().to_string());
     let org_uuid = Uuid::parse_str(&org_id).expect("Could not parse browsertrix org id to uuid");
     let base_url = env::var("BROWSERTRIX_BROWSERTRIX_URL")
-        .expect("Missing BROWSERTRIX_BROWSERTRIX_URL env var");
+        .unwrap_or_else(|_| "https://mock-browsertrix.example.com".to_string());
     let login_url = format!("{base_url}/auth/jwt/login");
     let create_crawl_url = format!("{base_url}/orgs/{org_uuid}/crawlconfigs/");
     let browsertrix = BrowsertrixConfig {
@@ -84,8 +90,9 @@ pub fn build_app_config() -> AppConfig {
         create_crawl_url,
     };
     let jwt_cookie_domain =
-        env::var("JWT_COOKIE_DOMAIN").expect("Missing JWT_COOKIE_DOMAIN env var");
-    let cors_urls_env_var = env::var("CORS_URL").expect("Missing CORS_URL env var");
+        env::var("JWT_COOKIE_DOMAIN").unwrap_or_else(|_| "localhost".to_string());
+    let cors_urls_env_var =
+        env::var("CORS_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     let cors_urls = cors_urls_env_var
         .split(",")
         .map(|s| {
@@ -93,26 +100,26 @@ pub fn build_app_config() -> AppConfig {
                 .expect("CORS_URL env var should contain comma separated origins")
         })
         .collect();
-    let listener_address = env::var("LISTENER_ADDRESS").expect("Missing LISTENER_ADDRESS env var");
+    let listener_address =
+        env::var("LISTENER_ADDRESS").unwrap_or_else(|_| "0.0.0.0:8080".to_string());
     let jwt_expiry_hours = env::var("JWT_EXPIRY_HOURS")
-        .expect("Missing JWT_EXPIRY_HOURS env var")
+        .unwrap_or_else(|_| "24".to_string())
         .parse()
         .expect("JWT_EXPIRY_HOURS should be a number");
-    let digital_ocean_spaces_endpoint_url =
-        env::var("DO_SPACES_ENDPOINT_URL").expect("Missing DO_SPACES_ENDPOINT_URL env var");
+    let digital_ocean_spaces_endpoint_url = env::var("DO_SPACES_ENDPOINT_URL")
+        .unwrap_or_else(|_| "https://nyc3.digitaloceanspaces.com".to_string());
     let digital_ocean_spaces_bucket =
-        env::var("DO_SPACES_BUCKET").expect("Missing DO_SPACES_BUCKET env var");
+        env::var("DO_SPACES_BUCKET").unwrap_or_else(|_| "mock-bucket".to_string());
     let digital_ocean_spaces_access_key =
-        env::var("DO_SPACES_ACCESS_KEY").expect("Missing DO_SPACES_ACCESS_KEY env var");
+        env::var("DO_SPACES_ACCESS_KEY").unwrap_or_else(|_| "mock_access_key".to_string());
     let digital_ocean_spaces_secret_key =
-        env::var("DO_SPACES_SECRET_KEY").expect("Missing DO_SPACES_SECRET_KEY env var");
-    let max_file_upload_size = 200 * 1024 * 1024;
+        env::var("DO_SPACES_SECRET_KEY").unwrap_or_else(|_| "mock_secret_key".to_string());
     let presigned_put_url_expiry_seconds = env::var("PRESIGNED_PUT_URL_EXPIRY_SECONDS")
-        .expect("Missing PRESIGNED_PUT_URL_EXPIRY_SECONDS env var")
+        .unwrap_or_else(|_| "3600".to_string())
         .parse()
         .expect("PRESIGNED_PUT_URL_EXPIRY_SECONDS should be a number");
     let presigned_get_url_expiry_seconds = env::var("PRESIGNED_GET_URL_EXPIRY_SECONDS")
-        .expect("Missing PRESIGNED_GET_URL_EXPIRY_SECONDS env var")
+        .unwrap_or_else(|_| "3600".to_string())
         .parse()
         .expect("PRESIGNED_GET_URL_EXPIRY_SECONDS should be a number");
     let s3_operation_timeout = env::var("S3_OPERATION_TIMEOUT")
@@ -159,7 +166,6 @@ pub fn build_app_config() -> AppConfig {
         digital_ocean_spaces_bucket,
         digital_ocean_spaces_access_key,
         digital_ocean_spaces_secret_key,
-        max_file_upload_size,
         presigned_put_url_expiry_seconds,
         presigned_get_url_expiry_seconds,
         s3_operation_timeout,

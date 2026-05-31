@@ -5,6 +5,10 @@ use entity::sea_orm_active_enums::Role;
 use sea_orm::DbErr;
 use uuid::Uuid;
 
+/// In-memory mock for AuthRepo.
+/// IMPORTANT: Does not perform real validation - all methods return mock data.
+/// This allows testing route handlers without real auth/session logic.
+/// API keys and sessions are accepted/created but not actually persisted or validated.
 #[derive(Clone, Debug, Default)]
 pub struct InMemoryAuthRepo {}
 
