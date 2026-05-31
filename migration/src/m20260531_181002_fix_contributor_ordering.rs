@@ -28,6 +28,40 @@ impl MigrationTrait for Migration {
     .execute_unprepared("ALTER TABLE dublin_metadata_ar_contributors ADD COLUMN order_id SERIAL")
     .await?;
 
+    manager
+    .get_connection()
+    .execute_unprepared(
+        r#"
+        UPDATE dublin_metadata_en_contributors dmoec
+        SET order_id = subseq.rn
+        FROM (
+            SELECT metadata_id, contributor_id,
+                   ROW_NUMBER() OVER (ORDER BY metadata_id, contributor_id) as rn
+            FROM dublin_metadata_en_contributors
+        ) AS subseq
+        WHERE dmoec.metadata_id = subseq.metadata_id
+          AND dmoec.contributor_id = subseq.contributor_id
+        "#,
+    )
+    .await?;
+
+    manager
+    .get_connection()
+    .execute_unprepared(
+        r#"
+        UPDATE dublin_metadata_ar_contributors dmoac
+        SET order_id = subseq.rn
+        FROM (
+            SELECT metadata_id, contributor_id,
+                   ROW_NUMBER() OVER (ORDER BY metadata_id, contributor_id) as rn
+            FROM dublin_metadata_ar_contributors
+        ) AS subseq
+        WHERE dmoac.metadata_id = subseq.metadata_id
+          AND dmoac.contributor_id = subseq.contributor_id
+        "#,
+    )
+    .await?;
+
         manager
             .create_index(
                 Index::create()
