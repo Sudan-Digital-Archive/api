@@ -234,8 +234,8 @@ async fn delete_collection(
 
 #[cfg(test)]
 mod tests {
+    use crate::mocks::builders::{build_test_app, get_mock_jwt};
     use crate::models::response::{CollectionResponse, ListCollectionsResponse};
-    use crate::test_tools::{build_test_app, get_mock_jwt};
     use axum::{
         body::Body,
         http::{Request, StatusCode},

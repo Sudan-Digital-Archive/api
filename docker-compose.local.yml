@@ -9,6 +9,7 @@ services:
       - POSTGRES_PASSWORD=test
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./create_dev_session.sh:/create_dev_session.sh
 
 volumes:
   postgres_data:

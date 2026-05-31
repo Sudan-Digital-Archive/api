@@ -1,158 +1,24 @@
 mod app_factory;
 mod auth;
 mod config;
+mod mocks;
 mod models;
 mod open_api_spec;
 mod repos;
 mod routes;
 mod services;
-#[cfg(test)]
-mod test_tools;
 
-use crate::app_factory::{create_app, AppState};
+use crate::app_factory::{build_app, create_app};
 use crate::config::build_app_config;
-use crate::repos::accessions_repo::DBAccessionsRepo;
-use crate::repos::auth_repo::DBAuthRepo;
-use crate::repos::browsertrix_repo::{BrowsertrixRepo, HTTPBrowsertrixRepo};
-use crate::repos::collections_repo::DBCollectionsRepo;
-use crate::repos::contributor_roles_repo::DBContributorRolesRepo;
-use crate::repos::contributors_repo::DBContributorsRepo;
-use crate::repos::creators_repo::DBCreatorsRepo;
-use crate::repos::emails_repo::PostmarkEmailsRepo;
-use crate::repos::locations_repo::DBLocationsRepo;
-use crate::repos::relations_repo::DBRelationsRepo;
-use crate::repos::s3_repo::{DigitalOceanSpacesRepo, S3Repo};
-use crate::repos::subjects_repo::DBSubjectsRepo;
-use crate::services::accessions_service::AccessionsService;
-use crate::services::auth_service::AuthService;
-use crate::services::collections_service::CollectionsService;
-use crate::services::contributors_service::ContributorsService;
-use crate::services::creators_service::CreatorsService;
-use crate::services::locations_service::LocationsService;
-use crate::services::relations_service::RelationsService;
-use crate::services::subjects_service::SubjectsService;
-use reqwest::Client;
-use sea_orm::{ConnectOptions, Database};
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
 use tracing::info;
 
 #[tokio::main]
 async fn main() {
     let app_config = build_app_config();
-    let dolly_the_app_config = app_config.clone();
-    let mut opt = ConnectOptions::new(app_config.postgres_url);
-    opt.sqlx_logging(!app_config.disable_sql_logging);
-    let db_session = Database::connect(opt)
-        .await
-        .expect("Could not connect to db");
-    let accessions_repo = DBAccessionsRepo {
-        db_session: db_session.clone(),
-    };
-    let auth_repo = DBAuthRepo {
-        db_session: db_session.clone(),
-        expiry_hours: app_config.jwt_expiry_hours,
-    };
-    let emails_repo = PostmarkEmailsRepo {
-        client: Client::new(),
-        archive_sender_email: app_config.archive_sender_email,
-        api_key: app_config.postmark_api_key,
-        postmark_api_base: app_config.postmark_api_base,
-    };
-    let subjects_repo = DBSubjectsRepo {
-        db_session: db_session.clone(),
-    };
-    let locations_repo = DBLocationsRepo {
-        db_session: db_session.clone(),
-    };
-    let relations_repo = DBRelationsRepo {
-        db_session: db_session.clone(),
-    };
-    let creators_repo = DBCreatorsRepo {
-        db_session: db_session.clone(),
-    };
-    let contributors_repo = DBContributorsRepo {
-        db_session: db_session.clone(),
-    };
-    let contributor_roles_repo = DBContributorRolesRepo {
-        db_session: db_session.clone(),
-    };
-    let collections_repo = DBCollectionsRepo {
-        db_session: db_session.clone(),
-    };
-    let mut http_btrix_repo = HTTPBrowsertrixRepo {
-        client: Client::new(),
-        login_url: app_config.browsertrix.login_url,
-        username: app_config.browsertrix.username,
-        password: app_config.browsertrix.password,
-        base_url: app_config.browsertrix.base_url,
-        org_id: app_config.browsertrix.org_id,
-        access_token: Arc::new(RwLock::new(String::new())),
-        create_crawl_url: app_config.browsertrix.create_crawl_url,
-    };
-    http_btrix_repo.initialize().await;
-    let digital_ocean_spaces_repo = DigitalOceanSpacesRepo::new(
-        app_config.digital_ocean_spaces_bucket,
-        &app_config.digital_ocean_spaces_endpoint_url,
-        &app_config.digital_ocean_spaces_access_key,
-        &app_config.digital_ocean_spaces_secret_key,
-        app_config.s3_operation_timeout,
-        app_config.s3_operation_attempt_timeout,
-        app_config.s3_connect_timeout,
-    )
-    .await
-    .expect("Could not create DigitalOcean Spaces repo");
-    let subjects_service = SubjectsService {
-        subjects_repo: Arc::new(subjects_repo.clone()),
-    };
-    let locations_service = LocationsService {
-        locations_repo: Arc::new(locations_repo),
-    };
-    let creators_service = CreatorsService {
-        creators_repo: Arc::new(creators_repo),
-    };
-    let contributors_service = ContributorsService {
-        contributors_repo: Arc::new(contributors_repo),
-        contributor_roles_repo: Arc::new(contributor_roles_repo),
-    };
-    let accessions_service = AccessionsService {
-        accessions_repo: Arc::new(accessions_repo),
-        auth_repo: Arc::new(auth_repo.clone()),
-        browsertrix_repo: Arc::new(http_btrix_repo),
-        emails_repo: Arc::new(emails_repo.clone()),
-        s3_repo: Arc::new(digital_ocean_spaces_repo),
-        subjects_service: subjects_service.clone(),
-        locations_service: locations_service.clone(),
-        creators_service: creators_service.clone(),
-        contributors_service: contributors_service.clone(),
-        presigned_put_url_expiry_seconds: app_config.presigned_put_url_expiry_seconds,
-        presigned_get_url_expiry_seconds: app_config.presigned_get_url_expiry_seconds,
-    };
-    let auth_service = AuthService {
-        auth_repo: Arc::new(auth_repo),
-        emails_repo: Arc::new(emails_repo),
-        jwt_cookie_domain: app_config.jwt_cookie_domain,
-    };
-    let relations_service = RelationsService {
-        relations_repo: Arc::new(relations_repo),
-    };
-    let collections_service = CollectionsService {
-        collections_repo: Arc::new(collections_repo),
-        subjects_repo: Arc::new(subjects_repo),
-    };
-    let app_state = AppState {
-        accessions_service,
-        auth_service,
-        collections_service,
-        subjects_service,
-        locations_service,
-        creators_service,
-        contributors_service,
-        relations_service,
-    };
-    let app = create_app(app_state, dolly_the_app_config, false);
+    let (app_state, final_config) = build_app(&app_config).await.expect("Failed to build app");
+    let app = create_app(app_state, final_config);
 
     let addr: SocketAddr = app_config
         .listener_address

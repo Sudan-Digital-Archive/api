@@ -180,11 +180,11 @@ async fn update_subject(
 #[cfg(test)]
 mod tests {
 
+    use crate::mocks::builders::{
+        build_test_app, get_mock_jwt, mock_paginated_subjects_ar, mock_paginated_subjects_en,
+    };
     use crate::models::response::{
         ListSubjectsArResponse, ListSubjectsEnResponse, SubjectResponse,
-    };
-    use crate::test_tools::{
-        build_test_app, get_mock_jwt, mock_paginated_subjects_ar, mock_paginated_subjects_en,
     };
     use axum::{
         body::Body,

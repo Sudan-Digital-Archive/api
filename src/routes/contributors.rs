@@ -343,11 +343,11 @@ async fn update_role(
 #[cfg(test)]
 mod tests {
 
+    use crate::mocks::builders::{build_test_app, get_mock_jwt};
     use crate::models::response::{
         ContributorResponse, ContributorRoleResponse, ListContributorRolesArResponse,
         ListContributorRolesEnResponse, ListContributorsArResponse, ListContributorsEnResponse,
     };
-    use crate::test_tools::{build_test_app, get_mock_jwt};
     use axum::{
         body::Body,
         http::{Request, StatusCode},

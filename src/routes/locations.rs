@@ -176,8 +176,8 @@ async fn update_location(
 
 #[cfg(test)]
 mod tests {
+    use crate::mocks::builders::{build_test_app, get_mock_jwt};
     use crate::models::response::{ListLocationsResponse, LocationResponse};
-    use crate::test_tools::{build_test_app, get_mock_jwt};
     use axum::{
         body::Body,
         http::{Request, StatusCode},

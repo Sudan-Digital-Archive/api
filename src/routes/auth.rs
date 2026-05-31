@@ -494,8 +494,8 @@ async fn revoke_api_key(
 
 #[cfg(test)]
 mod tests {
+    use crate::mocks::builders::{build_test_app, get_mock_jwt};
     use crate::models::response::CreateApiKeyResponse;
-    use crate::test_tools::build_test_app;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
@@ -505,11 +505,9 @@ mod tests {
     use tower::ServiceExt;
     use uuid::Uuid;
 
-    // Import JWT creation utilities
     use crate::auth::JWT_KEYS;
     use crate::models::auth::JWTClaims;
     use crate::models::response::{ListUsersResponse, UserResponse};
-    use crate::test_tools::get_mock_jwt;
     use ::entity::sea_orm_active_enums::Role;
     use chrono::Utc;
     use jsonwebtoken::{encode, Header};

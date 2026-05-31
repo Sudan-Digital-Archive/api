@@ -43,6 +43,20 @@ pub struct AppConfig {
     pub api_prefix: String,
     /// Disable SQL query logging from sea-orm/sqlx (verbose, defaults to true)
     pub disable_sql_logging: bool,
+    /// Use in-memory mock for Browsertrix
+    pub mock_browsertrix: bool,
+    /// Use in-memory mock for S3
+    pub mock_s3: bool,
+    /// Use in-memory mock for Postmark
+    pub mock_postmark: bool,
+    /// Use in-memory mock for Auth
+    pub mock_auth: bool,
+    /// Use in-memory mock for database repos
+    pub mock_db: bool,
+    /// Enable rate limiting (defaults to true)
+    pub enable_rate_limiting: bool,
+    /// Enable tracing/logging (defaults to true)
+    pub enable_tracing: bool,
 }
 
 /// Builds application configuration from environment variables
@@ -118,6 +132,19 @@ pub fn build_app_config() -> AppConfig {
         .unwrap_or("true".to_string())
         .parse()
         .expect("DISABLE_SQL_LOGGING should be true or false");
+    let mock_browsertrix = env::var("MOCK_BROWSERTRIX").unwrap_or_default() == "true";
+    let mock_s3 = env::var("MOCK_S3").unwrap_or_default() == "true";
+    let mock_postmark = env::var("MOCK_POSTMARK").unwrap_or_default() == "true";
+    let mock_auth = env::var("MOCK_AUTH").unwrap_or_default() == "true";
+    let mock_db = env::var("MOCK_DB").unwrap_or_default() == "true";
+    let enable_rate_limiting = env::var("ENABLE_RATE_LIMITING")
+        .unwrap_or("true".to_string())
+        .parse()
+        .expect("ENABLE_RATE_LIMITING should be true or false");
+    let enable_tracing = env::var("ENABLE_TRACING")
+        .unwrap_or("true".to_string())
+        .parse()
+        .expect("ENABLE_TRACING should be true or false");
     AppConfig {
         archive_sender_email,
         browsertrix,
@@ -140,6 +167,13 @@ pub fn build_app_config() -> AppConfig {
         s3_connect_timeout,
         api_prefix,
         disable_sql_logging,
+        mock_browsertrix,
+        mock_s3,
+        mock_postmark,
+        mock_auth,
+        mock_db,
+        enable_rate_limiting,
+        enable_tracing,
     }
 }
 
