@@ -153,7 +153,7 @@ impl MigrationTrait for Migration {
                     LIMIT 200
                     ) AS subjects_ar_ids,
                     (
-                    SELECT array_agg(dmcoe.contributor)
+                    SELECT array_agg(dmcoe.contributor ORDER BY dmoec.order_id)
                     FROM dublin_metadata_contributor_en dmcoe
                     LEFT JOIN dublin_metadata_en_contributors dmoec ON dmcoe.id = dmoec.contributor_id
                     LEFT JOIN dublin_metadata_en dme3 ON dme3.id = dmoec.metadata_id
@@ -181,7 +181,7 @@ impl MigrationTrait for Migration {
                     LIMIT 200
                     ) AS contributor_role_en_ids,    
                     (
-                    SELECT array_agg(dmcoa.contributor)
+                    SELECT array_agg(dmcoa.contributor ORDER BY dmoac.order_id)
                     FROM dublin_metadata_contributor_ar dmcoa
                     LEFT JOIN dublin_metadata_ar_contributors dmoac ON dmcoa.id = dmoac.contributor_id
                     LEFT JOIN dublin_metadata_ar dma3 ON dma3.id = dmoac.metadata_id
