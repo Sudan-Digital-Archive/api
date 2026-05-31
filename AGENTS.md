@@ -128,9 +128,8 @@ src/
 ├── routes/           # API route handlers
 ├── services/         # Business logic layer
 ├── repos/            # Data access layer
-└── mocks/            # In-memory mock implementations and test builders
-    ├── repos/        # Mock repository implementations
-    └── builders.rs   # Test app/service builders
+└── mocks/            # In-memory mock implementations
+    └── repos/        # Mock repository implementations
 ```
 
 ## CI/CD Requirements

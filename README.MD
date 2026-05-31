@@ -53,7 +53,7 @@ For testing without the email-based auth flow, use the `create_dev_session.sh` s
 With docker-compose running:
 
 ```bash
-docker exec sudan-digital-archive-api-db-1 /create_dev_session.sh dev@example.com
+docker exec api-db-1 /create_dev_session.sh dev@example.com
 ```
 
 This will create a user and session, then output URLs for testing the API.
