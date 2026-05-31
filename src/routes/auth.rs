@@ -495,7 +495,8 @@ async fn revoke_api_key(
 #[cfg(test)]
 mod tests {
     use crate::models::response::CreateApiKeyResponse;
-    use crate::test_tools::build_test_app;
+    use crate::test_utils::create_test_app;
+    use crate::test_utils::get_mock_jwt;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
@@ -505,18 +506,16 @@ mod tests {
     use tower::ServiceExt;
     use uuid::Uuid;
 
-    // Import JWT creation utilities
     use crate::auth::JWT_KEYS;
     use crate::models::auth::JWTClaims;
     use crate::models::response::{ListUsersResponse, UserResponse};
-    use crate::test_tools::get_mock_jwt;
     use ::entity::sea_orm_active_enums::Role;
     use chrono::Utc;
     use jsonwebtoken::{encode, Header};
 
     #[tokio::test]
     async fn login_with_valid_email() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -542,7 +541,7 @@ mod tests {
 
     #[tokio::test]
     async fn login_invalid_json() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -566,7 +565,7 @@ mod tests {
 
     #[tokio::test]
     async fn authorize_with_valid_session() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let test_user_id = Uuid::new_v4();
         let test_session_id = Uuid::new_v4();
 
@@ -596,7 +595,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_with_valid_jwt() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -619,7 +618,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_without_jwt() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -635,7 +634,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_api_key_as_admin() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let response = app
@@ -658,7 +657,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_api_key_without_admin_role() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
@@ -690,7 +689,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_api_key_without_jwt() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let response = app
@@ -709,7 +708,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_api_key_with_api_key_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let response = app
@@ -732,7 +731,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_api_key_with_invalid_api_key() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         // Mock API key verification returns None for invalid keys in the real implementation
@@ -755,7 +754,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_with_api_key() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -780,7 +779,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_user_as_admin() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -811,7 +810,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_user_without_admin_role() {
-        let app = build_test_app();
+        let app = create_test_app().await;
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
@@ -850,7 +849,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_user_invalid_request() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -876,7 +875,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_users_as_admin() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -897,7 +896,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_users_without_admin_role() {
-        let app = build_test_app();
+        let app = create_test_app().await;
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
         let claims = JWTClaims {
@@ -927,7 +926,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_user_as_admin() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let response = app
@@ -949,7 +948,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_user_without_admin_role() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
@@ -980,7 +979,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_user_as_admin() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let response = app
@@ -1011,7 +1010,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_user_without_admin_role() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
@@ -1050,7 +1049,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_user_as_admin() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let response = app
@@ -1070,7 +1069,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_user_without_admin_role() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
@@ -1102,7 +1101,7 @@ mod tests {
 
     #[tokio::test]
     async fn revoke_api_key_as_admin() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         // Use a valid base64-URL encoded string (32 bytes when decoded)
@@ -1132,7 +1131,7 @@ mod tests {
 
     #[tokio::test]
     async fn revoke_api_key_without_admin_role() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let expiry_time: chrono::DateTime<Utc> = Utc::now() + chrono::Duration::hours(24);
@@ -1173,7 +1172,7 @@ mod tests {
 
     #[tokio::test]
     async fn revoke_api_key_invalid_request() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         let response = app
@@ -1199,7 +1198,7 @@ mod tests {
 
     #[tokio::test]
     async fn revoke_api_key_without_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let target_user_id = Uuid::new_v4();
 
         // Use a valid base64-URL encoded string

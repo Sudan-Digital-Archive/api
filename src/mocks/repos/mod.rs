@@ -1,0 +1,25 @@
+pub mod in_memory_accessions_repo;
+pub mod in_memory_auth_repo;
+pub mod in_memory_browsertrix_repo;
+pub mod in_memory_collections_repo;
+pub mod in_memory_contributor_roles_repo;
+pub mod in_memory_contributors_repo;
+pub mod in_memory_creators_repo;
+pub mod in_memory_emails_repo;
+pub mod in_memory_locations_repo;
+pub mod in_memory_relations_repo;
+pub mod in_memory_s3_repo;
+pub mod in_memory_subjects_repo;
+
+pub use in_memory_accessions_repo::InMemoryAccessionsRepo;
+pub use in_memory_auth_repo::InMemoryAuthRepo;
+pub use in_memory_browsertrix_repo::InMemoryBrowsertrixRepo;
+pub use in_memory_collections_repo::InMemoryCollectionsRepo;
+pub use in_memory_contributor_roles_repo::InMemoryContributorRolesRepo;
+pub use in_memory_contributors_repo::InMemoryContributorsRepo;
+pub use in_memory_creators_repo::InMemoryCreatorsRepo;
+pub use in_memory_emails_repo::InMemoryEmailsRepo;
+pub use in_memory_locations_repo::InMemoryLocationsRepo;
+pub use in_memory_relations_repo::InMemoryRelationsRepo;
+pub use in_memory_s3_repo::InMemoryS3Repo;
+pub use in_memory_subjects_repo::InMemorySubjectsRepo;

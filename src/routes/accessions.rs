@@ -15,7 +15,7 @@ use crate::models::response::{
 };
 use crate::services::accessions_service::MetadataValidationParams;
 use ::entity::sea_orm_active_enums::Role;
-use axum::extract::{DefaultBodyLimit, Path, State};
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
@@ -25,7 +25,7 @@ use tracing::info;
 use validator::Validate;
 
 /// Creates routes for accession-related endpoints under `/accessions`.
-pub fn get_accessions_routes(max_file_upload_size: usize) -> Router<AppState> {
+pub fn get_accessions_routes() -> Router<AppState> {
     Router::new().nest(
         "/accessions",
         Router::new()
@@ -33,9 +33,6 @@ pub fn get_accessions_routes(max_file_upload_size: usize) -> Router<AppState> {
             .route("/private", get(list_accessions_private))
             .route("/crawl", post(create_accession_crawl))
             .route("/raw", post(create_accession_raw))
-            // Increase limit; default is 2MB; this only applies to raw upload endpoint
-            // see https://docs.rs/axum/latest/axum/extract/struct.DefaultBodyLimit.html
-            .layer(DefaultBodyLimit::max(max_file_upload_size))
             .route("/{accession_id}", get(get_one_accession))
             .route("/private/{accession_id}", get(get_one_private_accession))
             .route("/{accession_id}", delete(delete_accession))
@@ -317,80 +314,25 @@ async fn update_accession(
 
 #[cfg(test)]
 mod tests {
-    use crate::models::common::MetadataLanguage;
-    use crate::models::request::CreateAccessionRequest;
     use crate::models::response::{
         GetOneAccessionResponse, InitiateUploadResponse, ListAccessionsResponse,
     };
-    use crate::test_tools::{
-        build_test_accessions_service, build_test_app, get_mock_jwt,
-        mock_one_accession_with_metadata, mock_paginated_ar, mock_paginated_en,
+    use crate::test_utils::{
+        create_test_app, get_mock_jwt, mock_one_accession_with_metadata, mock_paginated_ar,
+        mock_paginated_en,
     };
     use axum::{
         body::Body,
         http::{Request, StatusCode},
     };
-    use entity::sea_orm_active_enums::DublinMetadataFormat;
     use http_body_util::BodyExt;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use tower::ServiceExt;
-    use uuid::Uuid;
 
-    #[tokio::test]
-    async fn run_one_crawl() {
-        let accessions_service = build_test_accessions_service();
-        accessions_service
-            .create_one(
-                CreateAccessionRequest {
-                    url: "".to_string(),
-                    metadata_language: MetadataLanguage::English,
-                    metadata_title: "".to_string(),
-                    metadata_description: Some("".to_string()),
-                    metadata_time: Default::default(),
-                    browser_profile: None,
-                    metadata_subjects: vec![1, 2, 3],
-                    is_private: false,
-                    metadata_format: DublinMetadataFormat::Wacz,
-                    send_email_notification: true,
-                    metadata_location_id: None,
-                    metadata_creator_id: None,
-                    metadata_contributor_ids: vec![],
-                    metadata_contributor_role_ids: vec![],
-                },
-                Uuid::new_v4(),
-            )
-            .await;
-    }
-
-    #[tokio::test]
-    async fn run_one_crawl_without_description() {
-        let accessions_service = build_test_accessions_service();
-        accessions_service
-            .create_one(
-                CreateAccessionRequest {
-                    url: "".to_string(),
-                    metadata_language: MetadataLanguage::English,
-                    metadata_title: "".to_string(),
-                    metadata_subjects: vec![1, 2, 3],
-                    metadata_description: None,
-                    metadata_time: Default::default(),
-                    browser_profile: None,
-                    is_private: true,
-                    metadata_format: DublinMetadataFormat::Wacz,
-                    send_email_notification: true,
-                    metadata_location_id: None,
-                    metadata_creator_id: None,
-                    metadata_contributor_ids: vec![],
-                    metadata_contributor_role_ids: vec![],
-                },
-                Uuid::new_v4(),
-            )
-            .await;
-    }
     #[tokio::test]
     async fn create_one_accession_crawl() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -428,7 +370,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_accession_crawl_no_description() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -466,7 +408,7 @@ mod tests {
     }
     #[tokio::test]
     async fn get_one_accession() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -490,7 +432,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_one_private_accession_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -514,7 +456,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_one_private_accession_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -538,7 +480,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_accessions_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -560,7 +502,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_accessions_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -582,7 +524,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_accessions_no_query_params() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -604,7 +546,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_accessions_private_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -620,7 +562,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_accessions_private_with_auth_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -643,7 +585,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_accessions_private_with_auth_no_query_params() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -666,7 +608,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_accession_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -683,7 +625,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_accession_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -704,7 +646,7 @@ mod tests {
     }
     #[tokio::test]
     async fn update_one_accession_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -734,7 +676,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_accession_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -772,7 +714,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_accession_raw_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let metadata = json!({
             "metadata_language": "english",
             "metadata_title": "Test Title",
@@ -801,7 +743,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_accession_raw_small_file() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let metadata = json!({
             "metadata_language": "english",
             "metadata_title": "Test Small File",
@@ -835,7 +777,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_accession_raw_large_file() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let metadata = json!({
             "metadata_language": "english",
             "metadata_title": "Test Large File",
@@ -869,7 +811,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_accession_raw_invalid_metadata() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         // Missing required field: metadata_title
         let metadata = json!({
             "metadata_language": "english",
@@ -899,7 +841,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_accession_crawl_with_email_notification_true() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -937,7 +879,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_accession_crawl_with_email_notification_false() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -975,7 +917,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_accession_crawl_without_email_notification_field() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()

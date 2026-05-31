@@ -347,7 +347,8 @@ mod tests {
         ContributorResponse, ContributorRoleResponse, ListContributorRolesArResponse,
         ListContributorRolesEnResponse, ListContributorsArResponse, ListContributorsEnResponse,
     };
-    use crate::test_tools::{build_test_app, get_mock_jwt};
+    use crate::test_utils::create_test_app;
+    use crate::test_utils::get_mock_jwt;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
@@ -359,7 +360,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_contributor_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -383,7 +384,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_contributor_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -411,7 +412,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_contributor_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -439,7 +440,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_contributors_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -459,7 +460,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_contributors_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -479,7 +480,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_contributor_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -502,7 +503,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_contributor_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -526,7 +527,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_contributor_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -550,7 +551,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_contributor_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -579,7 +580,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_role_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -603,7 +604,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_role_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -631,7 +632,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_roles_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -651,7 +652,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_roles_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -671,7 +672,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_role_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -694,7 +695,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_role_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -718,7 +719,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_role_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -742,7 +743,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_role_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()

@@ -177,7 +177,8 @@ async fn update_location(
 #[cfg(test)]
 mod tests {
     use crate::models::response::{ListLocationsResponse, LocationResponse};
-    use crate::test_tools::{build_test_app, get_mock_jwt};
+    use crate::test_utils::create_test_app;
+    use crate::test_utils::get_mock_jwt;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
@@ -209,7 +210,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_location_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -233,7 +234,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_location_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -261,7 +262,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_one_location_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -289,7 +290,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_locations_en() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -310,7 +311,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_locations_ar() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -331,7 +332,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_location_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -354,7 +355,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_one_location_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -378,7 +379,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_location_no_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()
@@ -402,7 +403,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_one_location_with_auth() {
-        let app = build_test_app();
+        let app = create_test_app().await;
         let response = app
             .oneshot(
                 Request::builder()

@@ -14,11 +14,17 @@ This file contains guidelines for agentic coding agents working on this Rust/Axu
 # Check all workspace crates compile
 cargo check --workspace
 
-# Run all tests (requires JWT_SECRET)
-export JWT_SECRET="test" && cargo test
+# Run all tests (requires JWT_SECRET and mock flags for in-memory testing)
+export JWT_SECRET="test" && \
+MOCK_BROWSERTRIX=true MOCK_S3=true MOCK_POSTMARK=true MOCK_AUTH=true MOCK_DB=true \
+ENABLE_RATE_LIMITING=false ENABLE_TRACING=false \
+cargo test
 
 # Run a specific test
-export JWT_SECRET="test" && cargo test test_name
+export JWT_SECRET="test" && \
+MOCK_BROWSERTRIX=true MOCK_S3=true MOCK_POSTMARK=true MOCK_AUTH=true MOCK_DB=true \
+ENABLE_RATE_LIMITING=false ENABLE_TRACING=false \
+cargo test test_name
 
 # Linting (used in CI)
 cargo clippy -- -D warnings
@@ -75,7 +81,7 @@ cargo run
 - Unit tests use in-memory repositories to avoid I/O operations
 - Test files in the same module or separate `#[cfg(test)]` modules
 - Use `pretty_assertions` for better test output (already in dev-dependencies)
-- Mock external services (see `src/test_tools.rs`)
+- Mock external services (see `src/mocks/`)
 - Manually test I/O operations since no integration tests exist
 
 ### API Documentation
@@ -122,7 +128,8 @@ src/
 ├── routes/           # API route handlers
 ├── services/         # Business logic layer
 ├── repos/            # Data access layer
-└── test_tools.rs     # Testing utilities (cfg test)
+└── mocks/            # In-memory mock implementations
+    └── repos/        # Mock repository implementations
 ```
 
 ## CI/CD Requirements

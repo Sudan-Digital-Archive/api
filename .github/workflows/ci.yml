@@ -45,6 +45,13 @@ jobs:
       - name: Run tests
         env:
           JWT_SECRET: "testsecret"
+          MOCK_BROWSERTRIX: "true"
+          MOCK_S3: "true"
+          MOCK_POSTMARK: "true"
+          MOCK_AUTH: "true"
+          MOCK_DB: "true"
+          ENABLE_RATE_LIMITING: "false"
+          ENABLE_TRACING: "false"
         run: cargo test --verbose
 
       - name: Install doctl
