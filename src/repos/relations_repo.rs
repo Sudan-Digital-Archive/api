@@ -239,7 +239,7 @@ impl RelationsRepo for DBRelationsRepo {
 
         let deleted = match metadata_language {
             MetadataLanguage::English => {
-                let _ = DublinMetadataEnRelations::delete_many()
+                DublinMetadataEnRelations::delete_many()
                     .filter(DublinMetadataEnRelationsColumn::RelationId.eq(relation_id))
                     .exec(&txn)
                     .await?;
@@ -250,7 +250,7 @@ impl RelationsRepo for DBRelationsRepo {
                     > 0
             }
             MetadataLanguage::Arabic => {
-                let _ = DublinMetadataArRelations::delete_many()
+                DublinMetadataArRelations::delete_many()
                     .filter(DublinMetadataArRelationsColumn::RelationId.eq(relation_id))
                     .exec(&txn)
                     .await?;
