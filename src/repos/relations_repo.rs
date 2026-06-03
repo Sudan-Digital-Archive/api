@@ -239,32 +239,26 @@ impl RelationsRepo for DBRelationsRepo {
 
         let deleted = match metadata_language {
             MetadataLanguage::English => {
-                let link_deleted = DublinMetadataEnRelations::delete_many()
+                DublinMetadataEnRelations::delete_many()
                     .filter(DublinMetadataEnRelationsColumn::RelationId.eq(relation_id))
                     .exec(&txn)
                     .await?;
-                if link_deleted.rows_affected > 0 {
-                    let relation_deleted = DublinMetadataRelationEn::delete_by_id(relation_id)
-                        .exec(&txn)
-                        .await?;
-                    relation_deleted.rows_affected > 0
-                } else {
-                    false
-                }
+                DublinMetadataRelationEn::delete_by_id(relation_id)
+                    .exec(&txn)
+                    .await?
+                    .rows_affected
+                    > 0
             }
             MetadataLanguage::Arabic => {
-                let link_deleted = DublinMetadataArRelations::delete_many()
+                DublinMetadataArRelations::delete_many()
                     .filter(DublinMetadataArRelationsColumn::RelationId.eq(relation_id))
                     .exec(&txn)
                     .await?;
-                if link_deleted.rows_affected > 0 {
-                    let relation_deleted = DublinMetadataRelationAr::delete_by_id(relation_id)
-                        .exec(&txn)
-                        .await?;
-                    relation_deleted.rows_affected > 0
-                } else {
-                    false
-                }
+                DublinMetadataRelationAr::delete_by_id(relation_id)
+                    .exec(&txn)
+                    .await?
+                    .rows_affected
+                    > 0
             }
         };
 

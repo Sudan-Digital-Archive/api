@@ -74,6 +74,10 @@ impl AccessionsRepo for InMemoryAccessionsRepo {
     async fn has_incoming_relations(&self, _id: i32) -> Result<bool, AccessionError> {
         Ok(false)
     }
+
+    async fn has_outgoing_relations(&self, _id: i32) -> Result<bool, AccessionError> {
+        Ok(false)
+    }
 }
 
 fn mock_paginated_en() -> (Vec<AccessionsWithMetadataModel>, u64) {
