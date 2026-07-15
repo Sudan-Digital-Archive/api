@@ -1,4 +1,4 @@
-FROM rust:1.93.1-slim-bullseye AS builder
+FROM rust:1.97.0-slim-bullseye AS builder
 
 WORKDIR /opt
 RUN apt-get update && \
