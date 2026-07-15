@@ -25,6 +25,7 @@ mod m20260403_162149_fix_view_regression_contributors;
 mod m20260405_151806_refactor_nullish_contributors;
 mod m20260430_205701_add_mp4_media_format;
 mod m20260531_181002_fix_contributor_ordering;
+mod m20260715_212028_add_pdf_format;
 
 pub struct Migrator;
 
@@ -58,6 +59,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260405_151806_refactor_nullish_contributors::Migration),
             Box::new(m20260430_205701_add_mp4_media_format::Migration),
             Box::new(m20260531_181002_fix_contributor_ordering::Migration),
+            Box::new(m20260715_212028_add_pdf_format::Migration),
         ]
     }
 }

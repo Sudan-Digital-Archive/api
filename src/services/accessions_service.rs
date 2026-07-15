@@ -141,7 +141,7 @@ impl AccessionsService {
             &accession.dublin_metadata_format,
         ) {
             // If it has an s3 filename, then we know its in our own digital ocean spaces storage
-            (Some(s3_filename), DublinMetadataFormat::Wacz) => {
+            (Some(s3_filename), _) => {
                 match self
                     .s3_repo
                     .get_presigned_url(s3_filename, self.presigned_get_url_expiry_seconds)
@@ -158,30 +158,7 @@ impl AccessionsService {
                         error!(%err, "Error occurred generating presigned url");
                         (
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            "Could not retrieving wacz url from s3 storage",
-                        )
-                            .into_response()
-                    }
-                }
-            }
-            (Some(s3_filename), DublinMetadataFormat::Mp4) => {
-                match self
-                    .s3_repo
-                    .get_presigned_url(s3_filename, self.presigned_get_url_expiry_seconds)
-                    .await
-                {
-                    Ok(presigned_url) => {
-                        let resp = GetOneAccessionResponse {
-                            accession: accession_for_response.into(),
-                            s3_url: presigned_url,
-                        };
-                        Json(resp).into_response()
-                    }
-                    Err(err) => {
-                        error!(%err, "Error occurred generating presigned url");
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "Could not retrieving media url from s3 storage",
+                            "Could not retrieve file url from s3 storage",
                         )
                             .into_response()
                     }
@@ -499,6 +476,7 @@ impl AccessionsService {
         let file_ext = match payload.metadata_format {
             DublinMetadataFormat::Wacz => "wacz",
             DublinMetadataFormat::Mp4 => "mp4",
+            DublinMetadataFormat::Pdf => "pdf",
         };
 
         let unique_filename = format!("{}.{}", Uuid::new_v4(), file_ext);
