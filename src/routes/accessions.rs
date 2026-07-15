@@ -810,6 +810,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn create_accession_raw_pdf_file() {
+        let app = create_test_app().await;
+        let metadata = json!({
+            "metadata_language": "english",
+            "metadata_title": "Test PDF File",
+            "metadata_description": "PDF file description",
+            "metadata_time": "2024-01-01T00:00:00",
+            "metadata_subjects": [1],
+            "is_private": false,
+            "metadata_format": "pdf",
+            "original_url": "https://coolurl.com"
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/api/v1/accessions/raw")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::from(serde_json::to_vec(&metadata).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let actual: InitiateUploadResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(actual.accession_id, 10);
+        assert!(actual.upload_url.contains("mock-presigned-put-url"));
+    }
+
+    #[tokio::test]
     async fn create_accession_raw_invalid_metadata() {
         let app = create_test_app().await;
         // Missing required field: metadata_title
