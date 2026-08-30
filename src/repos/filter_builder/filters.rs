@@ -133,6 +133,33 @@ pub fn apply_creators_filter(expr: SimpleExpr, ids: Vec<i32>, column: Expr) -> S
     }
 }
 
+/// Apply metadata format filter using OR chain (equivalent to IN clause).
+///
+/// Filters records where the Dublin Core metadata format matches ANY of the provided formats.
+pub fn apply_metadata_format_filter(
+    expr: SimpleExpr,
+    formats: Vec<entity::sea_orm_active_enums::DublinMetadataFormat>,
+) -> SimpleExpr {
+    use entity::accessions_with_metadata;
+
+    if formats.is_empty() {
+        return expr;
+    }
+
+    let in_clause = formats.iter().fold(None, |acc, format| {
+        let cond = accessions_with_metadata::Column::DublinMetadataFormat.eq(format.clone());
+        match acc {
+            None => Some(cond),
+            Some(a) => Some(a.or(cond)),
+        }
+    });
+
+    match in_clause {
+        Some(cond) => expr.and(cond),
+        None => expr,
+    }
+}
+
 /// Apply contributors filter using PostgreSQL array operators.
 ///
 /// - **Inclusive (`Overlap` `&&`):** Match if ANY contributor ID exists in the array.
@@ -301,5 +328,19 @@ mod tests {
         let result = apply_contributor_roles_filter(base, roles, column);
 
         assert!(format!("{:?}", result).contains("Contains"));
+    }
+
+    #[test]
+    fn test_metadata_format_filter() {
+        let formats = vec![
+            entity::sea_orm_active_enums::DublinMetadataFormat::Wacz,
+            entity::sea_orm_active_enums::DublinMetadataFormat::Pdf,
+        ];
+
+        let base = Expr::col(Column::HasEnglishMetadata).eq(true);
+        let result = apply_metadata_format_filter(base, formats);
+
+        let formatted = format!("{:?}", result);
+        assert!(formatted.contains("dublin_metadata_format"));
     }
 }

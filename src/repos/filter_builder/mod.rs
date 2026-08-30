@@ -35,8 +35,8 @@ pub mod types;
 pub use columns::LanguageColumns;
 pub use filters::{
     apply_contributor_roles_filter, apply_contributors_filter, apply_creators_filter,
-    apply_date_range, apply_location_ids_filter, apply_location_text_filter, apply_query_term,
-    apply_subjects_filter, apply_url_filter,
+    apply_date_range, apply_location_ids_filter, apply_location_text_filter,
+    apply_metadata_format_filter, apply_query_term, apply_subjects_filter, apply_url_filter,
 };
 pub use types::{FilterParams, MetadataIds};
 
@@ -125,6 +125,11 @@ pub fn build_filter_expression(params: FilterParams) -> Option<SimpleExpr> {
                 columns_ref.contributor_roles_column.clone(),
             )
         });
+    }
+
+    // Apply metadata format filter
+    if let Some(formats) = params.metadata_format {
+        expr = expr.map(|e| apply_metadata_format_filter(e, formats));
     }
 
     expr

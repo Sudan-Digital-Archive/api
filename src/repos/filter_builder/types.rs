@@ -1,5 +1,6 @@
 use crate::models::common::MetadataLanguage;
 use chrono::NaiveDateTime;
+use entity::sea_orm_active_enums::DublinMetadataFormat;
 
 /// Filter parameters for building database queries.
 #[derive(Debug, Clone, Default)]
@@ -10,6 +11,7 @@ pub struct FilterParams {
     pub metadata_creators: Option<Vec<i32>>,
     pub metadata_contributors: Option<MetadataIds>,
     pub metadata_contributor_roles: Option<MetadataIds>,
+    pub metadata_format: Option<Vec<DublinMetadataFormat>>,
     pub query_term: Option<String>,
     pub url_filter: Option<String>,
     pub date_from: Option<NaiveDateTime>,

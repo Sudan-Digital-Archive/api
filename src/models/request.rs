@@ -97,6 +97,8 @@ pub struct AccessionPagination {
     #[schema(example = json!([1, 2, 3]))]
     pub metadata_contributor_roles: Vec<i32>,
     pub metadata_contributor_roles_inclusive_filter: Option<bool>,
+    #[schema(example = json!(["wacz", "pdf"]))]
+    pub metadata_format: Vec<DublinMetadataFormat>,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
     #[validate(length(min = 1, max = 2000))]
@@ -120,6 +122,7 @@ impl Default for AccessionPagination {
             metadata_contributors_inclusive_filter: None,
             metadata_contributor_roles: [].to_vec(),
             metadata_contributor_roles_inclusive_filter: None,
+            metadata_format: [].to_vec(),
             query_term: None,
             url_filter: None,
             date_from: None,
@@ -152,6 +155,8 @@ pub struct AccessionPaginationWithPrivate {
     #[schema(example = json!([1, 2, 3]))]
     pub metadata_contributor_roles: Vec<i32>,
     pub metadata_contributor_roles_inclusive_filter: Option<bool>,
+    #[schema(example = json!(["wacz", "pdf"]))]
+    pub metadata_format: Vec<DublinMetadataFormat>,
     #[validate(length(min = 1, max = 500))]
     pub query_term: Option<String>,
     #[validate(length(min = 1, max = 2000))]
@@ -176,6 +181,7 @@ impl Default for AccessionPaginationWithPrivate {
             metadata_contributors_inclusive_filter: None,
             metadata_contributor_roles: [].to_vec(),
             metadata_contributor_roles_inclusive_filter: None,
+            metadata_format: [].to_vec(),
             query_term: None,
             url_filter: None,
             date_from: None,
