@@ -402,6 +402,11 @@ impl AccessionsRepo for DBAccessionsRepo {
                         .unwrap_or(true),
                 })
             },
+            metadata_format: if params.metadata_format.is_empty() {
+                None
+            } else {
+                Some(params.metadata_format)
+            },
             query_term: params.query_term,
             url_filter: params.url_filter,
             date_from: params.date_from,

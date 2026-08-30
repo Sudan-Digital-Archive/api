@@ -546,6 +546,7 @@ impl AccessionsService {
         }
     }
 
+    #[allow(clippy::result_large_err)]
     pub async fn validate_metadata_references(
         self,
         params: MetadataValidationParams,
@@ -688,6 +689,7 @@ impl AccessionsService {
         Ok(())
     }
 
+    #[allow(clippy::result_large_err)]
     pub async fn get_dublin_metadata_id(
         &self,
         accession_id: i32,
@@ -712,6 +714,7 @@ impl AccessionsService {
     ///
     /// # Returns
     /// Result containing the upload ID or an error response
+    #[allow(clippy::result_large_err)]
     async fn upload_from_stream<S, E>(
         self,
         key: String,

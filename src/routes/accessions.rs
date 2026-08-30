@@ -215,6 +215,7 @@ async fn list_accessions(
         metadata_contributor_roles_inclusive_filter: pagination
             .0
             .metadata_contributor_roles_inclusive_filter,
+        metadata_format: pagination.0.metadata_format,
         query_term: pagination.0.query_term,
         url_filter: pagination.0.url_filter,
         date_from: pagination.0.date_from,
@@ -604,6 +605,39 @@ mod tests {
         let expected = mocked_resp;
         assert_eq!(actual.num_pages, expected.1);
         assert_eq!(actual.items.len(), expected.0.len());
+    }
+
+    #[tokio::test]
+    async fn list_accessions_metadata_format_filter() {
+        let app = create_test_app().await;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/accessions?metadata_format=wacz&metadata_format=pdf")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn list_accessions_private_metadata_format_filter() {
+        let app = create_test_app().await;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/accessions/private?metadata_format=wacz&metadata_format=pdf")
+                    .header(http::header::COOKIE, format!("jwt={}", get_mock_jwt()))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
