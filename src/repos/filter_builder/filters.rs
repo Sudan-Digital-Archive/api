@@ -331,7 +331,7 @@ mod tests {
     }
 
     #[test]
-    fn test_metadata_format_filter() {
+    fn test_metadata_format_filter_with_multiple_formats() {
         let formats = vec![
             entity::sea_orm_active_enums::DublinMetadataFormat::Wacz,
             entity::sea_orm_active_enums::DublinMetadataFormat::Pdf,
@@ -341,6 +341,41 @@ mod tests {
         let result = apply_metadata_format_filter(base, formats);
 
         let formatted = format!("{:?}", result);
+        assert!(
+            formatted.contains("has_english_metadata"),
+            "base expression should be preserved"
+        );
+        assert!(
+            formatted.contains("dublin_metadata_format"),
+            "should filter on dublin_metadata_format"
+        );
+        assert!(formatted.contains("wacz"), "should include wacz format");
+        assert!(formatted.contains("pdf"), "should include pdf format");
+    }
+
+    #[test]
+    fn test_metadata_format_filter_empty_returns_base_unchanged() {
+        let formats = vec![];
+        let base = Expr::col(Column::HasEnglishMetadata).eq(true);
+        let result = apply_metadata_format_filter(base, formats);
+
+        let formatted = format!("{:?}", result);
+        assert!(formatted.contains("has_english_metadata"));
+        assert!(
+            !formatted.contains("dublin_metadata_format"),
+            "no filter should be applied for empty formats"
+        );
+    }
+
+    #[test]
+    fn test_metadata_format_filter_single_format() {
+        let formats = vec![entity::sea_orm_active_enums::DublinMetadataFormat::Mp4];
+        let base = Expr::col(Column::HasEnglishMetadata).eq(true);
+        let result = apply_metadata_format_filter(base, formats);
+
+        let formatted = format!("{:?}", result);
         assert!(formatted.contains("dublin_metadata_format"));
+        assert!(formatted.contains("mp4"));
+        assert!(formatted.contains("has_english_metadata"));
     }
 }
