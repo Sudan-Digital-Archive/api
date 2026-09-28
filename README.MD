@@ -13,7 +13,8 @@ You will need a local postgres database running. You can use the `docker-compose
 ## Running the Application
 
 Copy `.env.example` to `.env` and fill in the required environment variables (`JWT_SECRET` is always required,
-and `POSTGRES_URL` is required unless `MOCK_DB=true`). Then:
+and `POSTGRES_URL` is required unless `MOCK_DB=true`). Note that `BROWSERTRIX_ORGID` must be a valid UUID, even when
+`MOCK_BROWSERTRIX=true`, or the app will fail to start. Then:
 
 ```shell
 set -a; source .env; set +a
