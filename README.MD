@@ -12,10 +12,11 @@ You will need a local postgres database running. You can use the `docker-compose
 
 ## Running the Application
 
-Copy `.env.example` to `.env` and fill in the required environment variables. Then:
+Copy `.env.example` to `.env` and fill in the required environment variables (`JWT_SECRET` is always required,
+and `POSTGRES_URL` is required unless `MOCK_DB=true`). Then:
 
 ```shell
-export $(cat .env | xargs)
+set -a; source .env; set +a
 cargo run
 ```
 
