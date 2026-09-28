@@ -46,6 +46,16 @@ ENABLE_RATE_LIMITING=false
 ENABLE_TRACING=false
 ```
 
+## Migrations
+
+To run migrations:
+
+```shell
+export DATABASE_URL="postgresql://archivist:test@localhost/sudan_archives"
+cd migration
+cargo run -- up
+```
+
 ## Creating a Development Session
 
 For testing without the email-based auth flow, use the `create_dev_session.sh` script to create a user and session directly in the database.
@@ -57,16 +67,6 @@ docker exec api-db-1 /create_dev_session.sh dev@example.com
 ```
 
 This will create a user and session, then output URLs for testing the API.
-
-## Migrations
-
-To run migrations:
-
-```shell
-export DATABASE_URL="postgresql://archivist:test@localhost/sudan_archives"
-cd migration
-cargo run -- up
-```
 
 ## Database
 
