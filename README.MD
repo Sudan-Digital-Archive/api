@@ -12,10 +12,12 @@ You will need a local postgres database running. You can use the `docker-compose
 
 ## Running the Application
 
-Copy `.env.example` to `.env` and fill in the required environment variables. Then:
+Copy `.env.example` to `.env` and fill in the required environment variables (`JWT_SECRET` is always required,
+and `POSTGRES_URL` is required unless `MOCK_DB=true`). Note that `BROWSERTRIX_ORGID` must be a valid UUID, even when
+`MOCK_BROWSERTRIX=true`, or the app will fail to start. Then:
 
 ```shell
-export $(cat .env | xargs)
+set -a; source .env; set +a
 cargo run
 ```
 
@@ -46,6 +48,16 @@ ENABLE_RATE_LIMITING=false
 ENABLE_TRACING=false
 ```
 
+## Migrations
+
+To run migrations:
+
+```shell
+export DATABASE_URL="postgresql://archivist:test@localhost/sudan_archives"
+cd migration
+cargo run -- up
+```
+
 ## Creating a Development Session
 
 For testing without the email-based auth flow, use the `create_dev_session.sh` script to create a user and session directly in the database.
@@ -57,16 +69,6 @@ docker exec api-db-1 /create_dev_session.sh dev@example.com
 ```
 
 This will create a user and session, then output URLs for testing the API.
-
-## Migrations
-
-To run migrations:
-
-```shell
-export DATABASE_URL="postgresql://archivist:test@localhost/sudan_archives"
-cd migration
-cargo run -- up
-```
 
 ## Database
 
