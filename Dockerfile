@@ -1,4 +1,4 @@
-FROM rust:1.97.0-slim-bullseye AS builder
+FROM rust:1.97.0-slim-trixie AS builder
 
 WORKDIR /opt
 RUN apt-get update && \
@@ -12,7 +12,7 @@ COPY entity entity/
 COPY migration migration/
 RUN cargo build --release
 
-FROM debian:bullseye-slim
+FROM debian:trixie-slim
 
 WORKDIR /opt
 RUN apt-get update && \
