@@ -9,7 +9,7 @@ use entity::sea_orm_active_enums::{DublinMetadataFormat, DublinMetadataRelationT
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
-use validator::Validate;
+use validator::{Validate, ValidationError};
 
 /// Request for creating a new accession with crawl + metadata.
 #[derive(Debug, Clone, Validate, Deserialize, ToSchema)]
@@ -42,6 +42,7 @@ pub struct CreateAccessionRequest {
 
 /// Request for creating a new accession from raw file + metadata.
 #[derive(Validate, Deserialize, ToSchema)]
+#[validate(schema(function = "validate_wacz_requires_original_url"))]
 pub struct CreateAccessionRequestRaw {
     pub metadata_language: MetadataLanguage,
     #[validate(length(min = 1, max = 200))]
@@ -55,7 +56,7 @@ pub struct CreateAccessionRequestRaw {
     pub is_private: bool,
     pub metadata_format: DublinMetadataFormat,
     #[validate(url)]
-    pub original_url: String,
+    pub original_url: Option<String>,
     pub metadata_location_id: Option<i32>,
     pub metadata_creator_id: Option<i32>,
     #[serde(default)]
@@ -64,6 +65,19 @@ pub struct CreateAccessionRequestRaw {
     #[serde(default)]
     #[schema(example = json!([null, 1, null]))]
     pub metadata_contributor_role_ids: Vec<Option<i32>>,
+}
+
+/// A WACZ accession is an archive *of* a URL, so the source URL is required.
+/// Every other raw format (pdf, mp4, and future formats) may omit it.
+fn validate_wacz_requires_original_url(
+    payload: &CreateAccessionRequestRaw,
+) -> Result<(), ValidationError> {
+    if payload.metadata_format == DublinMetadataFormat::Wacz && payload.original_url.is_none() {
+        let mut err = ValidationError::new("original_url_required_for_wacz");
+        err.message = Some("original_url is required when metadata_format is wacz".into());
+        return Err(err);
+    }
+    Ok(())
 }
 
 /// Request for initiating a new Browsertrix crawl.
@@ -701,5 +715,79 @@ impl Default for RelationLangParam {
         Self {
             lang: MetadataLanguage::English,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn raw_request(
+        format: DublinMetadataFormat,
+        original_url: Option<&str>,
+    ) -> CreateAccessionRequestRaw {
+        CreateAccessionRequestRaw {
+            metadata_language: MetadataLanguage::English,
+            metadata_title: "Test title".to_string(),
+            metadata_description: None,
+            metadata_time: NaiveDateTime::default(),
+            metadata_subjects: vec![1],
+            is_private: false,
+            metadata_format: format,
+            original_url: original_url.map(str::to_string),
+            metadata_location_id: None,
+            metadata_creator_id: None,
+            metadata_contributor_ids: vec![],
+            metadata_contributor_role_ids: vec![],
+        }
+    }
+
+    #[test]
+    fn raw_pdf_without_url_is_valid() {
+        assert!(raw_request(DublinMetadataFormat::Pdf, None)
+            .validate()
+            .is_ok());
+    }
+
+    #[test]
+    fn raw_pdf_with_valid_url_is_valid() {
+        assert!(raw_request(
+            DublinMetadataFormat::Pdf,
+            Some("https://example.com/doc.pdf")
+        )
+        .validate()
+        .is_ok());
+    }
+
+    #[test]
+    fn raw_mp4_without_url_is_valid() {
+        assert!(raw_request(DublinMetadataFormat::Mp4, None)
+            .validate()
+            .is_ok());
+    }
+
+    #[test]
+    fn raw_pdf_with_malformed_url_is_invalid() {
+        let errors = raw_request(DublinMetadataFormat::Pdf, Some("not a url"))
+            .validate()
+            .unwrap_err();
+        assert!(errors.field_errors().contains_key("original_url"));
+    }
+
+    #[test]
+    fn raw_wacz_without_url_is_invalid() {
+        let errors = raw_request(DublinMetadataFormat::Wacz, None)
+            .validate()
+            .unwrap_err();
+        assert!(errors.field_errors().contains_key("__all__"));
+    }
+
+    #[test]
+    fn raw_wacz_with_valid_url_is_valid() {
+        assert!(
+            raw_request(DublinMetadataFormat::Wacz, Some("https://example.com"))
+                .validate()
+                .is_ok()
+        );
     }
 }

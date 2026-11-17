@@ -225,6 +225,7 @@ impl AccessionsService {
                 let time_to_sleep = Duration::from_secs(60);
                 let time_to_sleep_as_secs = time_to_sleep.as_secs();
                 let mut count = 0;
+                let mut timed_out = true;
                 while count <= 30 {
                     count += 1;
                     info!("Polled {count} time(s) for url {}", payload.url.clone());
@@ -232,6 +233,21 @@ impl AccessionsService {
                     match get_crawl_resp {
                         Ok(valid_crawl_resp) => {
                             if valid_crawl_resp == "complete" {
+                                // A crawl can report "complete" a beat before the WACZ
+                                // file record exists, which produces an empty download.
+                                // Only proceed once replay.json actually lists a WACZ
+                                // resource for this run.
+                                if let Err(err) =
+                                    self.browsertrix_repo.get_wacz_url(&resp.run_now_job).await
+                                {
+                                    info!(
+                                        %err,
+                                        "WACZ for url {} is not available yet, checking again in {time_to_sleep_as_secs}s",
+                                        payload.url
+                                    );
+                                    sleep(time_to_sleep).await;
+                                    continue;
+                                }
                                 let crawl_time_secs = (time_to_sleep * count).as_secs();
                                 info!(%valid_crawl_resp, %count, "Crawl complete after {crawl_time_secs}s");
                                 let trimmed_title = payload.metadata_title.trim().to_string();
@@ -343,6 +359,7 @@ impl AccessionsService {
                                         }
                                     }
                                 }
+                                timed_out = false;
                                 break;
                             } else {
                                 sleep(time_to_sleep).await;
@@ -353,6 +370,13 @@ impl AccessionsService {
                             sleep(time_to_sleep).await;
                         }
                     }
+                }
+                if timed_out {
+                    error!(
+                        "Timed out after {count} polls (~{}s) waiting for crawl of url {} to complete; no accession was created",
+                        (time_to_sleep * count).as_secs(),
+                        payload.url
+                    );
                 }
             }
         }
