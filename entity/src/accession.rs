@@ -17,7 +17,7 @@ pub struct Model {
     pub crawl_id: Option<Uuid>,
     pub org_id: Option<Uuid>,
     pub job_run_id: Option<String>,
-    pub seed_url: String,
+    pub seed_url: Option<String>,
     pub is_private: bool,
     pub dublin_metadata_format: DublinMetadataFormat,
     pub s3_filename: Option<String>,

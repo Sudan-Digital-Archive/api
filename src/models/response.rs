@@ -30,7 +30,7 @@ pub struct AccessionsWithMetadataResponse {
     pub crawl_id: Option<Uuid>,
     pub org_id: Option<Uuid>,
     pub job_run_id: Option<String>,
-    pub seed_url: String,
+    pub seed_url: Option<String>,
     pub dublin_metadata_date: NaiveDateTime,
     pub dublin_metadata_format: DublinMetadataFormat,
     pub title_en: Option<String>,
@@ -365,4 +365,32 @@ pub struct RelationResponse {
     pub id: i32,
     pub relation_type: String,
     pub related_accession_id: i32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::mock_one_accession_with_metadata;
+
+    #[test]
+    fn url_less_accession_serializes_seed_url_as_null() {
+        let mut model = mock_one_accession_with_metadata();
+        model.seed_url = None;
+
+        let response: AccessionsWithMetadataResponse = model.into();
+        let json = serde_json::to_value(&response).unwrap();
+
+        assert_eq!(json["seed_url"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn accession_with_url_serializes_seed_url() {
+        let mut model = mock_one_accession_with_metadata();
+        model.seed_url = Some("https://example.com".to_string());
+
+        let response: AccessionsWithMetadataResponse = model.into();
+        let json = serde_json::to_value(&response).unwrap();
+
+        assert_eq!(json["seed_url"], "https://example.com");
+    }
 }
